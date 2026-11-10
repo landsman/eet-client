@@ -1,0 +1,39 @@
+# eet-client
+
+> A Java 21+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
+> builds the SOAP message, signs it with the taxpayer's certificate, sends it, checks the tax office's signature on
+> the answer and returns a sealed Result. No dependency but the JDK and JSpecify. Published on GitHub Packages
+> (`cz.insuit:eet-client`), not Maven Central. Pre-1.0.
+
+Setting it up in a project:
+
+- Add `cz.insuit:eet-client` from the GitHub Packages repository `https://maven.pkg.github.com/landsman/eet-client`.
+  It asks for a token even for a public package (`read:packages`). Never write a token into the build file or the
+  repository.
+- The certificate is the taxpayer's, one per EIČ, a `.p12` with a password downloaded from MOJE daně and valid for
+  366 days. Store it encrypted; `Signer.fromPkcs12(in, password)` loads it, `Signer.of(key, certificate)` takes a
+  key held elsewhere.
+- `EetClient.builder(Environment.PLAYGROUND or PRODUCTION, signer).build()`, one per certificate. The timeout may not
+  be under 2 seconds.
+- `Sale.of(eic, unitId, registerId, sequenceNumber, time, total)`, optional parts through `with…` methods;
+  `Submission.of(sale)`; `eet.send(submission)`.
+- `Result` is `Accepted` (pok, warnings), `Uncertain` (send again), `Rejected` (fix the message) or `Verified` (a
+  dry run passed). Switch over all four.
+
+Mistakes to avoid:
+
+- Amounts are haléře as `long`: 123.50 Kč is `12350`. A refund is a negative sale of its own.
+- The client never retries. Keep the queue in the database, in the same transaction as the sale, and send an
+  `Uncertain` again with `submission.resend()`: a new message id, the same sale. Never build a new `Submission`
+  for a resend.
+- Every accepted attempt gets its own POK, a resend of an accepted sale included. Store each one with its
+  `exchange()`, which carries the signed request.
+- A sale is registered for a contact payment: cash, a card terminal or a QR code at the till. A card payment on a
+  website or a transfer from home is not.
+- The playground answers only some networks; a cloud CI runner gets no answer. Do not send to it from CI.
+- Revocation of the answer's certificate is not checked, so reading an answer makes no network call.
+
+## Docs
+
+- [README](https://github.com/landsman/eet-client/blob/main/README.md): install, usage, what is left to the caller
+- [The official interface](https://github.com/landsman/eet-client/blob/main/spec/README.md): the state's WSDL, schema, sample requests and documents
