@@ -13,14 +13,17 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Sends sales to EET 2.0 and tells what came of each one. Thread-safe; build one per signer and keep it.
+ * Sends sales to EET 2.0 and tells what came of each one. Thread-safe; build one per signer, keep it, and close it
+ * when the signer is replaced: it holds an HTTP client with a thread of its own.
  *
  * <pre>{@code
  * EetClient eet = EetClient.builder(Environment.PRODUCTION, Signer.fromPkcs12(p12, password)).build();
@@ -30,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * <p>One call is one attempt. It never retries on its own, because a retry is a new message the caller has to know
  * about and store: on {@link Result.Uncertain}, send {@link Submission#resend()}.
  */
-public final class EetClient {
+public final class EetClient implements AutoCloseable {
 
     // The tax office's response certificate is issued by I.CA (EET_pristupove_provozni_informace, chapter 3.3).
     private static final List<X509Certificate> ICA_ROOTS = certificates("ica-root-rsa-2022.pem");
@@ -69,8 +72,21 @@ public final class EetClient {
         return new Builder(environment, signer);
     }
 
-    /** Signs and sends one attempt, and waits for the answer at most the timeout. */
+    /** Releases the HTTP client. A send after this comes back uncertain, as a network failure. */
+    @Override
+    public void close() {
+        http.close();
+    }
+
+    /**
+     * Signs and sends one attempt, and waits for the answer at most the timeout. A sale this client's certificate
+     * cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
+     */
     public Result send(Submission submission) {
+        @Nullable String unsignable = unsignable(submission.sale());
+        if (unsignable != null) {
+            return uncertain(Result.Reason.CERTIFICATE, unsignable, submission, "", null, null);
+        }
         byte[] request = Soap.request(submission, OffsetDateTime.now(clock), signer);
         String sent = new String(request, StandardCharsets.UTF_8);
         HttpResponse<byte[]> response;
@@ -132,6 +148,22 @@ public final class EetClient {
             case -1 -> new Result.Uncertain(Result.Reason.TEMPORARY, response.errorText(), exchange);
             default -> new Result.Rejected(code, response.errorText(), response.warnings(), exchange);
         };
+    }
+
+    /** Why the certificate cannot sign {@code sale} now, or null when it can. */
+    private @Nullable String unsignable(Sale sale) {
+        Instant now = clock.instant();
+        if (!signer.notAfter().isAfter(now)) {
+            return "the certificate expired on " + signer.notAfter();
+        }
+        Optional<String> eic = signer.eic();
+        if (eic.isEmpty()) {
+            return "the certificate is not a cash register certificate: its CN is not an EIČ";
+        }
+        if (!eic.get().equals(sale.eic())) {
+            return "the certificate is for " + eic.get() + ", the sale for " + sale.eic();
+        }
+        return null;
     }
 
     private static Result.Uncertain uncertain(

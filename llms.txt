@@ -22,6 +22,10 @@ Setting it up in a project:
 
 Mistakes to avoid:
 
+- `Uncertain` with `Reason.CERTIFICATE` means nothing was sent (expired certificate, or another taxpayer's): hold the
+  sale and send it again after a new certificate, do not treat it as refused. Its exchange's request is empty.
+- A storno is `sale.storno(sequenceNumber, time)`, a new sale with negated amounts and its own sequence number.
+- `EetClient` holds an HTTP client: keep one per certificate and `close()` it when the certificate is replaced.
 - Amounts are haléře as `long`: 123.50 Kč is `12350`. A refund is a negative sale of its own.
 - The client never retries. Keep the queue in the database, in the same transaction as the sale, and send an
   `Uncertain` again with `submission.resend()`: a new message id, the same sale. Never build a new `Submission`

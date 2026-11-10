@@ -51,4 +51,18 @@ class SaleTest {
     private static Sale sale(String registerId, long total) {
         return Sale.of("CZ00000019", 11, registerId, "2027/1", TIME, total);
     }
+
+    @Test
+    void aStornoNegatesEveryAmountUnderItsOwnNumberAndTime() {
+        OffsetDateTime later = SoapTest.sale().time().plusDays(1);
+        Sale sale = SoapTest.sale().withForLaterDraw(50).withDraw(-20);
+        Sale storno = sale.storno("2027/2", later);
+        assertEquals(sale.eic(), storno.eic());
+        assertEquals(sale.registerId(), storno.registerId());
+        assertEquals("2027/2", storno.sequenceNumber());
+        assertEquals(later, storno.time());
+        assertEquals(-100, storno.total());
+        assertEquals(-50L, storno.forLaterDraw());
+        assertEquals(20L, storno.draw());
+    }
 }

@@ -6,7 +6,12 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
+import java.util.regex.Pattern;
+import javax.naming.InvalidNameException;
+import javax.naming.ldap.LdapName;
 
 /**
  * A taxpayer's cash register certificate and its private key, which sign every message.
@@ -15,6 +20,8 @@ import java.util.Collections;
  * PKCS#12 file with a password. One certificate serves any number of cash registers.
  */
 public final class Signer {
+
+    private static final Pattern EIC = Pattern.compile("CZ[0-9]{8,10}");
 
     private final PrivateKey key;
     private final X509Certificate certificate;
@@ -51,6 +58,28 @@ public final class Signer {
     /** The certificate that goes into every message. */
     public X509Certificate certificate() {
         return certificate;
+    }
+
+    /**
+     * The taxpayer the certificate was issued to: its CN, which the tax office's CA sets to the EIČ, e.g.
+     * {@code CZ00000019}. Empty when the CN is not an EIČ, so the certificate is not a cash register one.
+     */
+    public Optional<String> eic() {
+        try {
+            return new LdapName(certificate.getSubjectX500Principal().getName())
+                    .getRdns().stream()
+                            .filter(rdn -> rdn.getType().equalsIgnoreCase("CN"))
+                            .map(rdn -> String.valueOf(rdn.getValue()))
+                            .filter(cn -> EIC.matcher(cn).matches())
+                            .findFirst();
+        } catch (InvalidNameException e) {
+            return Optional.empty();
+        }
+    }
+
+    /** When the certificate stops being valid. The tax office issues them for 366 days. */
+    public Instant notAfter() {
+        return certificate.getNotAfter().toInstant();
     }
 
     PrivateKey key() {
