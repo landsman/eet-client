@@ -53,7 +53,13 @@ public sealed interface Result {
         /** A confirmation whose signature, or whose signer, does not check out. */
         SIGNATURE,
         /** An answer that is not a valid response to this message: a SOAP fault, another HTTP status, another id. */
-        UNEXPECTED_RESPONSE
+        UNEXPECTED_RESPONSE,
+        /**
+         * Nothing was sent: the certificate has expired, is not a cash register certificate, or belongs to another
+         * taxpayer than the sale. The tax office would refuse it for good (error 4), so it is held back instead; send
+         * it again once a valid certificate signs it. The exchange's request is empty.
+         */
+        CERTIFICATE
     }
 
     /** A warning the service attached; the sale is registered regardless. */

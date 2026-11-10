@@ -11,7 +11,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
@@ -133,6 +136,44 @@ class EetClientTest {
     void refusesATimeoutShorterThanTheActAllows() throws Exception {
         EetClient.Builder builder = EetClient.builder(Environment.PLAYGROUND, TestKeys.signer());
         assertThrows(IllegalArgumentException.class, () -> builder.timeout(Duration.ofMillis(1_999)));
+    }
+
+    @Test
+    void aSaleOfAnotherTaxpayerIsHeldBackUnsent() throws Exception {
+        answer.set(r -> {
+            throw new AssertionError("nothing should reach the server");
+        });
+        Sale other = Sale.of("CZ683555118", 11, "1", "2027/1", SoapTest.sale().time(), 100);
+        Result.Uncertain result = assertInstanceOf(Result.Uncertain.class, send(Submission.of(other)));
+        assertEquals(Result.Reason.CERTIFICATE, result.reason());
+        assertEquals("", result.exchange().request());
+    }
+
+    @Test
+    void anExpiredCertificateHoldsTheSaleBackUnsent() throws Exception {
+        Instant afterExpiry = TestKeys.signer().notAfter().plusSeconds(1);
+        Result result = EetClient.builder(Environment.PLAYGROUND, TestKeys.signer())
+                .endpoint(
+                        URI.create("http://" + InetAddress.getLoopbackAddress().getHostAddress() + ":"
+                                + server.getAddress().getPort() + "/"))
+                .clock(Clock.fixed(afterExpiry, ZoneOffset.UTC))
+                .build()
+                .send(Submission.of(SoapTest.sale()));
+        Result.Uncertain uncertain = assertInstanceOf(Result.Uncertain.class, result);
+        assertEquals(Result.Reason.CERTIFICATE, uncertain.reason());
+        assertTrue(uncertain.detail().startsWith("the certificate expired"), uncertain.detail());
+    }
+
+    @Test
+    void aClosedClientSendsNothingAndSaysSo() throws Exception {
+        EetClient client = EetClient.builder(Environment.PLAYGROUND, TestKeys.signer())
+                .endpoint(
+                        URI.create("http://" + InetAddress.getLoopbackAddress().getHostAddress() + ":"
+                                + server.getAddress().getPort() + "/"))
+                .build();
+        client.close();
+        Result.Uncertain result = assertInstanceOf(Result.Uncertain.class, client.send(Submission.of(SoapTest.sale())));
+        assertEquals(Result.Reason.NETWORK, result.reason());
     }
 
     private Result send(Submission submission) throws Exception {

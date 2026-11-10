@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation("cz.insuit:eet-client:0.1.0")
+    implementation("cz.insuit:eet-client:0.2.0")
 }
 
 // gh's token, or nothing when gh is missing or signed out: the build then gets GitHub's 401, not a crash.
@@ -64,7 +64,7 @@ gh auth refresh -h github.com -s read:packages
 <dependency>
     <groupId>cz.insuit</groupId>
     <artifactId>eet-client</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -83,7 +83,7 @@ Paste this into it:
 Add the EET 2.0 client to this Java or Kotlin project.
 
 1. Read https://github.com/landsman/eet-client/blob/main/llms.txt and https://github.com/landsman/eet-client/blob/main/README.md first. Do not guess the API.
-2. Dependency: cz.insuit:eet-client:0.1.0 from GitHub Packages, as the README's Install section shows. Never write a token into the project.
+2. Dependency: cz.insuit:eet-client:0.2.0 from GitHub Packages, as the README's Install section shows. Never write a token into the project.
 3. Certificate: each taxpayer's .p12 and its password are stored encrypted, never in the repository; load them with Signer.fromPkcs12.
 4. Code: one EetClient per certificate, Environment.PLAYGROUND until I say production. Amounts are haléře as long.
 5. Persist every Submission and its Result in the same transaction as the sale. An Uncertain result is queued in the
@@ -121,6 +121,12 @@ instrument: cash, a card terminal or a QR code paid at the till are registered, 
 transfer from home is not. A refund is a negative sale of its own. The
 [item descriptions](https://eet.gov.cz/assets/cs/cmsmedia/pro-vyvojare/EET_popis_polozek_datove_zpravy.pdf)
 go through the cases.
+
+A sale the certificate cannot sign, because it expired or is another taxpayer's, is not sent: it comes back
+`Uncertain` with `Reason.CERTIFICATE`, to be held and sent once a valid certificate signs it, rather than refused for
+good by the tax office. `signer.eic()` and `signer.notAfter()` read the certificate for the checks and warnings of your
+own. A refund handed back in person is `sale.storno(sequenceNumber, time)`, a sale of its own with every amount
+negated. One `EetClient` per certificate; `close()` it when the certificate is replaced.
 
 The certificate is the taxpayer's: they download it as a `.p12` with a password from MOJE daně, and it is valid
 for 366 days. `Signer.of(key, certificate)` takes a key held somewhere else.

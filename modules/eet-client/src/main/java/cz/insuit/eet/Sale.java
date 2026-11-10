@@ -71,6 +71,24 @@ public record Sale(
         return new Sale(eic, unitId, registerId, sequenceNumber, time, total, null, false, null, null);
     }
 
+    /**
+     * The storno of this sale: the same taxpayer, unit and till, every amount negated, at {@code time} and under its
+     * own {@code sequenceNumber}. The tax office links nothing: a storno is a sale of its own with a negative amount.
+     */
+    public Sale storno(String sequenceNumber, OffsetDateTime time) {
+        return new Sale(
+                eic,
+                unitId,
+                registerId,
+                sequenceNumber,
+                time,
+                -total,
+                delegatingEic,
+                delegatedByMany,
+                forLaterDraw == null ? null : -forLaterDraw,
+                draw == null ? null : -draw);
+    }
+
     /** The same sale, registered by {@link #eic} on behalf of the one taxpayer who authorised it. */
     public Sale withDelegatingEic(String delegatingEic) {
         return new Sale(
