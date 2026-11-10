@@ -1,0 +1,33 @@
+name: Security
+
+# Both scans live in landsman/config and are called, not copied, so a new
+# scanner version or an extra default pack reaches this repo on its next run.
+on:
+  workflow_dispatch:
+  # A draft runs nothing; marking it ready for review starts the run.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  # A lockfile nobody touches still collects new advisories; only a run on an
+  # unchanged commit sees them.
+  schedule:
+    - cron: '0 6 * * 1'
+
+# A new push to a pull request cancels that PR's run still going: only the newest commit's result counts.
+# A push to main or a scheduled scan is never cancelled, so every merged commit and every Monday get a result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # p/java is the only language pack: the one .kts file is build config, and
+  # p/gradle does not exist in the registry. p/secrets and p/ci come from the baseline.
+  semgrep:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: landsman/config/.github/workflows/semgrep.yml@main
+    with:
+      packs: p/java
+
+  # Reads modules/eet-client/gradle.lockfile; `make lock` rewrites it.
+  dependencies:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: landsman/config/.github/workflows/dependencies.yml@main

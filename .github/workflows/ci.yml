@@ -1,0 +1,45 @@
+name: ci
+
+# A change to Markdown alone builds nothing: no check reads it, and main requires none, so a skipped run blocks no
+# merge. A commit that touches anything else as well runs in full.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  # A draft runs nothing; marking it ready for review starts the run.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: ['**.md']
+
+# A new push to a pull request cancels that PR's run still going: only the newest commit's result counts.
+# A push to main or a scheduled scan is never cancelled, so every merged commit and every Monday get a result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: JDK ${{ matrix.jdk }}
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Every JDK the jar promises to run on. It is compiled once per job on 25, for release 21; only the tests
+      # move. 17 is not here: release 21 classes do not load on it.
+      matrix:
+        jdk: [21, 25]
+    steps:
+      - uses: actions/checkout@v7
+      # The last one listed becomes JAVA_HOME, which Gradle runs on; the matrix JDK is found as a toolchain.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            ${{ matrix.jdk }}
+            25
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew -q javaToolchains
+      - run: make build TESTS_JDK=${{ matrix.jdk }}

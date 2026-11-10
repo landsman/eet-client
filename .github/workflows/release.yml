@@ -1,0 +1,31 @@
+name: release
+
+# Only a tag vX.Y.Z publishes, the release X.Y.Z, after building and testing it. A merge to main publishes nothing:
+# a release is somebody's decision, made by pushing the tag (.docs/development.md).
+on:
+  push:
+    tags: ['v*']
+
+# Never cancelled: half a publish is a version with some of its jars.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: make publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ github.ref_name }}

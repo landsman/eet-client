@@ -1,0 +1,6 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :modules:eet-client:dependencies --write-locks
+org.jspecify:jspecify:1.0.1=runtimeClasspath
+empty=
