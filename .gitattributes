@@ -2,3 +2,6 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+# The state's files, byte for byte as published.
+/spec/** -text
+/spec/README.md text
