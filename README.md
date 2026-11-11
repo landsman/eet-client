@@ -7,7 +7,7 @@ Java 21; besides the JDK it uses only jackson-core, for the renewal API.
 
 ```mermaid
 flowchart LR
-    app["Your app<br/>Sale, Submission"] -->|send| client["EetClient<br/>signs with the .p12"]
+    app["Your app<br/>a payment at the till"] -->|send| client["EetClient<br/>signs with the .p12"]
     client -->|SOAP| eet[("EET service")]
     eet -->|signed answer| client
     client --> accepted["Accepted<br/>store the POK"]
