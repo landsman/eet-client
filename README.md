@@ -7,13 +7,11 @@ Java 21; besides the JDK it uses only jackson-core, for the renewal API.
 
 ```mermaid
 flowchart LR
-    app["Your app<br/>a payment at the till"] -->|hands over| client["This library<br/>signs it with the taxpayer's certificate"]
-    client -->|registers the sale| eet[("The tax office's EET service")]
-    eet -->|answers, signed;<br/>the library checks the signature| client
-    client --> accepted["Accepted<br/>store the POK"]
-    client --> uncertain["Uncertain<br/>no clear answer, send it again later"]
-    client --> rejected["Rejected<br/>the tax office refused the data, fix it and send again"]
-    uncertain -.->|later| client
+    pay["A customer pays at the till<br/>cash, a card terminal, a QR code"] --> report["The sale is reported<br/>to the tax office"]
+    report --> ok["Registered<br/>the tax office's code is kept with the sale"]
+    report --> wait["No answer yet<br/>reported again later"]
+    report --> refused["Refused<br/>the data is corrected and reported again"]
+    wait -.-> report
 ```
 
 Checked against the state's playground. Published on GitHub Packages, not Maven Central.
