@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation("cz.insuit:eet-client:0.2.0")
+    implementation("cz.insuit:eet-client:0.3.0")
 }
 
 // gh's token, or nothing when gh is missing or signed out: the build then gets GitHub's 401, not a crash.
@@ -56,7 +56,7 @@ gh auth refresh -h github.com -s read:packages
 <dependency>
     <groupId>cz.insuit</groupId>
     <artifactId>eet-client</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -75,7 +75,7 @@ Paste this into it:
 Add the EET 2.0 client to this Java or Kotlin project.
 
 1. Read https://github.com/landsman/eet-client/blob/main/llms.txt and https://github.com/landsman/eet-client/blob/main/.docs/usage.md first. Do not guess the API.
-2. Dependency: cz.insuit:eet-client:0.2.0 from GitHub Packages, as https://github.com/landsman/eet-client/blob/main/.docs/install.md shows. Never write a token into the project.
+2. Dependency: cz.insuit:eet-client:0.3.0 from GitHub Packages, as https://github.com/landsman/eet-client/blob/main/.docs/install.md shows. Never write a token into the project.
 3. Certificate: each taxpayer's .p12 and its password are stored encrypted, never in the repository; load them with Signer.fromPkcs12.
 4. Code: one EetClient per certificate, Environment.PLAYGROUND until I say production. Amounts are haléře as long.
 5. Persist every Submission and its Result in the same transaction as the sale. An Uncertain result is queued in the
