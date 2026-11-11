@@ -1,4 +1,4 @@
-package cz.insuit.eet;
+package cz.insuit.eet.renewal;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
+import cz.insuit.eet.Signer;
+import cz.insuit.eet.TestKeys;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -103,19 +105,19 @@ class RenewalTest {
     @Test
     void everyStateIsRead() throws IOException {
         answer(200, "{\"reqId\":\"" + ID + "\",\"state\":\"INPROCESS\",\"pollAfterSeconds\":2}");
-        assertEquals(new Renewal.Status.InProcess(Duration.ofSeconds(2)), renewal.status(ID));
+        assertEquals(new Status.InProcess(Duration.ofSeconds(2)), renewal.status(ID));
         assertEquals("GET /api/request/" + ID + "/status", seen.get());
         answer(200, "{\"reqId\":\"" + ID + "\",\"state\":\"ISSUED\"}");
-        assertInstanceOf(Renewal.Status.Issued.class, renewal.status(ID));
+        assertInstanceOf(Status.Issued.class, renewal.status(ID));
         answer(200, "{\"reqId\":\"" + ID + "\",\"state\":\"DELIVERING\"}");
-        assertInstanceOf(Renewal.Status.Delivering.class, renewal.status(ID));
+        assertInstanceOf(Status.Delivering.class, renewal.status(ID));
         answer(200, "{\"reqId\":\"" + ID + "\",\"state\":\"FINISHED\"}");
-        assertInstanceOf(Renewal.Status.Finished.class, renewal.status(ID));
+        assertInstanceOf(Status.Finished.class, renewal.status(ID));
         answer(
                 200,
                 "{\"reqId\":\"" + ID
                         + "\",\"state\":\"REJECTED\",\"rejectedReason\":\"Selhání kontroly parametrů žádosti\"}");
-        assertEquals(new Renewal.Status.Rejected("Selhání kontroly parametrů žádosti"), renewal.status(ID));
+        assertEquals(new Status.Rejected("Selhání kontroly parametrů žádosti"), renewal.status(ID));
     }
 
     @Test
@@ -127,7 +129,7 @@ class RenewalTest {
                 "{\"pkcs12\":\"" + Base64.getEncoder().encodeToString(p12) + "\",\"password\":\"ABcd1234\","
                         + "\"certificate\":{\"sn\":24961511666821687692,\"validFrom\":\"2026-01-04 11:13:33+00:00\","
                         + "\"validTo\":\"2027-01-04 11:13:33+00:00\",\"state\":\"VALID\"}}");
-        Renewal.Renewed renewed = renewal.claim(ID);
+        Renewed renewed = renewal.claim(ID);
         assertEquals("POST /api/request/" + ID + "/claim-download", seen.get());
         assertArrayEquals(p12, renewed.pkcs12());
         assertArrayEquals("ABcd1234".toCharArray(), renewed.password());
@@ -154,15 +156,31 @@ class RenewalTest {
     @Test
     void anErrorCarriesTheStatusAndTheCasCode() {
         answer(409, "{\"code\":5,\"message\":\"Conflict.\",\"additionalInfo\":\"Some more info.\"}");
-        Renewal.RenewalException e = assertThrows(Renewal.RenewalException.class, () -> renewal.acknowledge(ID));
+        RenewalException e = assertThrows(RenewalException.class, () -> renewal.acknowledge(ID));
         assertEquals(409, e.status());
         assertEquals(5, e.code());
         assertEquals("HTTP 409, code 5: Conflict. Some more info.", e.getMessage());
 
         answer(502, "<html>bad gateway</html>");
-        Renewal.RenewalException html = assertThrows(Renewal.RenewalException.class, () -> renewal.status(ID));
+        RenewalException html = assertThrows(RenewalException.class, () -> renewal.status(ID));
         assertEquals(502, html.status());
         assertNull(html.code());
+    }
+
+    @Test
+    void anAnswerOfTheWrongShapeIsAnIoException() {
+        answer(200, "{\"reqId\":\"" + ID + "\",\"state\":\"INPROCESS\",\"pollAfterSeconds\":\"soon\"}");
+        assertThrows(IOException.class, () -> renewal.status(ID));
+        answer(
+                200,
+                "{\"pkcs12\":\"AQID\",\"password\":\"x\",\"certificate\":{\"validFrom\":\"2026-01-04 11:13:33+00:00\","
+                        + "\"validTo\":\"2027-01-04 11:13:33+00:00\"}}");
+        assertThrows(IOException.class, () -> renewal.claim(ID));
+        answer(
+                200,
+                "{\"pkcs12\":\"AQID\",\"password\":\"x\",\"certificate\":{\"sn\":1,\"validFrom\":\"yesterday\","
+                        + "\"validTo\":\"2027-01-04 11:13:33+00:00\"}}");
+        assertThrows(IOException.class, () -> renewal.claim(ID));
     }
 
     private void answer(int status, String body) {

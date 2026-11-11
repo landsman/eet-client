@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Collections;
@@ -80,6 +81,17 @@ public final class Signer {
     /** When the certificate stops being valid. The tax office issues them for 366 days. */
     public Instant notAfter() {
         return certificate.getNotAfter().toInstant();
+    }
+
+    /**
+     * Signs {@code data} with SHA256withRSA, which the CA's API wants for its tokens. The key itself never leaves
+     * this class.
+     */
+    public byte[] sign(byte[] data) throws GeneralSecurityException {
+        Signature rsa = Signature.getInstance("SHA256withRSA");
+        rsa.initSign(key);
+        rsa.update(data);
+        return rsa.sign();
     }
 
     PrivateKey key() {
