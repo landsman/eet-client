@@ -2,7 +2,7 @@
 
 > A Java 21+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
 > builds the SOAP message, signs it with the taxpayer's certificate, sends it, checks the tax office's signature on
-> the answer and returns a sealed Result. No dependency but the JDK and JSpecify. Published on GitHub Packages
+> the answer and returns a sealed Result. Depends on the JDK, JSpecify and jackson-core (for the CA's renewal API). Published on GitHub Packages
 > (`cz.insuit:eet-client`), not Maven Central. Pre-1.0.
 
 Setting it up in a project:
@@ -35,6 +35,9 @@ Mistakes to avoid:
 - A sale is registered for a contact payment: cash, a card terminal or a QR code at the till. A card payment on a
   website or a transfer from home is not.
 - The playground answers only some networks; a cloud CI runner gets no answer. Do not send to it from CI.
+- Renewal is `Renewal.of(Server.PRODUCTION, signer)`: `request()`, then `status(id)` from a job, `claim(id)`,
+  store the file and password, and only then `acknowledge(id)`. Only a still valid certificate renews; the playground
+  has no CA.
 - Revocation of the answer's certificate is not checked, so reading an answer makes no network call.
 
 ## Docs

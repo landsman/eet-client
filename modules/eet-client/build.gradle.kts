@@ -6,8 +6,10 @@ description = "A client for EET 2.0, the Czech electronic sales registration"
 
 dependencies {
     // Nullability annotations are part of the API, so Kotlin callers see String and String? correctly.
-    // Nothing else: SOAP, XML signatures, PKCS#12 and HTTP all come with the JDK.
+    // SOAP, XML signatures, PKCS#12 and HTTP come with the JDK; JSON, for the CA's renewal API, does not. Only the
+    // streaming core, so a caller on Jackson 3 or none gets one small jar and no ObjectMapper of ours.
     api("org.jspecify:jspecify:1.0.1")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.22.4")
 
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
