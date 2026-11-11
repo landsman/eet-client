@@ -14,8 +14,6 @@ flowchart LR
     client --> uncertain["Uncertain<br/>queue it, resend()"]
     client --> rejected["Rejected<br/>fix the message"]
     uncertain -.->|later| client
-    renewal["Renewal"] -->|before expiry| ca[("CA EET")]
-    ca -->|new .p12| app
 ```
 
 Checked against the state's playground. Published on GitHub Packages, not Maven Central.
