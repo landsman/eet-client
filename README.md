@@ -11,7 +11,7 @@ flowchart LR
     client -->|SOAP| eet[("EET service")]
     eet -->|signed answer| client
     client --> accepted["Accepted<br/>store the POK"]
-    client --> uncertain["Uncertain<br/>queue it, resend()"]
+    client --> uncertain["Uncertain<br/>no clear answer, send it again later"]
     client --> rejected["Rejected<br/>fix the message"]
     uncertain -.->|later| client
 ```
