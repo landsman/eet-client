@@ -42,6 +42,7 @@ Mistakes to avoid:
 
 ## Docs
 
+- [What a merchant keeps an eye on](https://github.com/landsman/eet-client/blob/main/.docs/lifecycle.md): the whole cycle from the certificate to its renewal, and who does each step
 - [Installing](https://github.com/landsman/eet-client/blob/main/.docs/install.md): the artifact on GitHub Packages, for Gradle and Maven
 - [Using the client](https://github.com/landsman/eet-client/blob/main/.docs/usage.md): sending a sale, the results, what is left to the caller
 - [Renewing the certificate](https://github.com/landsman/eet-client/blob/main/.docs/renewal.md): the CA's API, claim before acknowledge

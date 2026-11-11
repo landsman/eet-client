@@ -2,7 +2,7 @@
 
 A Java client for [EET 2.0](https://eet.gov.cz/cs/pro-vyvojare), the Czech electronic sales registration that
 starts on 2027-01-01. It builds the message, signs it with the taxpayer's certificate, sends it, checks the tax
-office's signature on the answer and says what came of it, and renews the certificate before it expires. It needs
+office's signature on the answer and says what came of it, and renews the certificate through the CA's API. It needs
 Java 21; besides the JDK it uses only jackson-core, for the renewal API.
 
 It is built for a platform that registers sales for many merchants at once, a payment gateway or a marketplace:
@@ -33,13 +33,13 @@ Checked against the state's playground. Published on GitHub Packages, not Maven 
 
 ## What it covers
 
-| Feature | EET 2.0 | This client |
-|---|:---:|:---:|
-| Registering a sale | ✅ | ✅ |
-| A dry run (verification mode) | ✅ | ✅ |
-| Sending an uncertain sale again | ✅ | ✅, `submission.resend()`; the queue is yours |
-| Storno of a sale | ✅ | ✅ |
-| Checking the tax office's signature on the answer | ✅ | ✅ |
-| Renewing the certificate through the CA's API | ✅ | ✅, not on the playground, which has no CA |
+| Feature | This client |
+|---|:---:|
+| Registering a sale | ✅ |
+| A dry run (verification mode) | ✅ |
+| Sending an uncertain sale again | ✅, `submission.resend()`; the queue is yours |
+| Storno of a sale | ✅ |
+| Checking the tax office's signature on the answer | ✅ |
+| Renewing the certificate through the CA's API | ✅, not on the playground, which has no CA |
 
 Licence: [Apache 2.0](LICENSE)
