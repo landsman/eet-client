@@ -12,7 +12,7 @@ flowchart LR
     eet -->|signed answer| client
     client --> accepted["Accepted<br/>store the POK"]
     client --> uncertain["Uncertain<br/>no clear answer, send it again later"]
-    client --> rejected["Rejected<br/>fix the message"]
+    client --> rejected["Rejected<br/>the tax office refused the data, fix it and send again"]
     uncertain -.->|later| client
 ```
 
