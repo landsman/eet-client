@@ -14,8 +14,8 @@ build: ## check formatting, compile with error prone and nullaway, test, check d
 test: ## run the tests
 	./gradlew test
 
-lock: ## rewrite modules/eet-client/gradle.lockfile after a dependency changes, the vulnerability scan reads it
-	./gradlew :modules:eet-client:dependencies --configuration runtimeClasspath --write-locks
+lock: ## rewrite gradle.lockfile after a dependency changes, the vulnerability scan reads it
+	./gradlew dependencies --configuration runtimeClasspath --write-locks
 
 publish: ## build and publish the jar to GitHub Packages, as the release workflow does; RELEASE_VERSION=v0.1.0 releases
 	./gradlew build publish $(if $(RELEASE_VERSION),-PreleaseVersion=$(RELEASE_VERSION:v%=%))
@@ -34,7 +34,7 @@ playground-certs: ## download the shared playground certificates into .cache/pla
 	unzip -o -q .cache/playground/certs.zip -d .cache/playground
 
 live-test: playground-certs ## send made-up sales to the playground; it answers only some networks, a Czech one did
-	./gradlew :modules:eet-client:test -Plive --tests '*PlaygroundTest' --rerun
+	./gradlew test -Plive --tests '*PlaygroundTest' --rerun
 
 ##@ Code style
 .PHONY: format lint

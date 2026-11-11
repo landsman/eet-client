@@ -34,7 +34,7 @@ The playground's shared test certificates are not here either: `make playground-
 
 ## Recorded answers
 
-`modules/eet-client/src/test/resources/cz/insuit/eet/playground/` holds real playground responses, recorded by
+`src/test/resources/cz/insuit/eet/playground/` holds real playground responses, recorded by
 `make live-test` on 2026-11-10 from a Czech network: an accepted sale, one accepted with warning 6, and a
 verification. The confirmations are signed by the tax office's playground certificate
 (`CN=NEOSTRE - playground prostredi EET`, `organizationIdentifier=NTRCZ-72080043`), issued by

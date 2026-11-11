@@ -27,7 +27,7 @@ jobs:
     with:
       packs: p/java
 
-  # Reads modules/eet-client/gradle.lockfile; `make lock` rewrites it.
+  # Reads gradle.lockfile; `make lock` rewrites it.
   dependencies:
     if: ${{ !github.event.pull_request.draft }}
     uses: landsman/config/.github/workflows/dependencies.yml@main
