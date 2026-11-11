@@ -10,6 +10,13 @@ published rather than against a copy of it.
 | `EETServiceSOAP.wsdl`, `EETXMLSchema.xsd` | the service and the message schema, interface 4.1 |
 | `requests/CZ*.eet.v4.req.xml` | the state's own signed sample requests, one per playground taxpayer |
 | `ca/ca_eet-root_*`, `ca/ca_eet-sub_*` | the CA that issues cash register certificates, playground and production |
+| `caeetapi_jwt.yml` | the CA's certificate renewal API, OpenAPI 3.1, unpacked from `caeetapi_jwt.zip` |
+
+The renewal API's token needs `iat` and `exp` at most five minutes apart. The YAML says `{}` is enough; the
+binding text,
+[CAEET_postupy_zadost_certifikat_v2.pdf](https://eet.gov.cz/assets/cs/cmsmedia/pro-vyvojare/CAEET_postupy_zadost_certifikat_v2.pdf),
+page 5, requires both, and `Renewal` sends both. The playground has no CA ("CA EET není pro Playground v provozu",
+access information, chapter 3.1), so its shared certificates cannot be renewed.
 
 The documents themselves are PDFs on the same page and are not copied here. The ones this library follows:
 
