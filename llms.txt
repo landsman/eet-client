@@ -42,5 +42,7 @@ Mistakes to avoid:
 
 ## Docs
 
-- [README](https://github.com/landsman/eet-client/blob/main/README.md): install, usage, what is left to the caller
+- [Installing](https://github.com/landsman/eet-client/blob/main/.docs/install.md): the artifact on GitHub Packages, for Gradle and Maven
+- [Using the client](https://github.com/landsman/eet-client/blob/main/.docs/usage.md): sending a sale, the results, what is left to the caller
+- [Renewing the certificate](https://github.com/landsman/eet-client/blob/main/.docs/renewal.md): the CA's API, claim before acknowledge
 - [The official interface](https://github.com/landsman/eet-client/blob/main/spec/README.md): the state's WSDL, schema, sample requests and documents
