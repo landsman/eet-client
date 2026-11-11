@@ -14,7 +14,7 @@ plugins {
 val testsJdk = providers.gradleProperty("testsJdk")
 
 // A tag vX.Y.Z releases X.Y.Z (-PreleaseVersion, set by `make publish`); anything else is the next snapshot.
-val releaseVersion = providers.gradleProperty("releaseVersion").orElse("0.2.0-SNAPSHOT")
+val releaseVersion = providers.gradleProperty("releaseVersion").orElse("0.4.0-SNAPSHOT")
 
 group = "cz.insuit"
 version = releaseVersion.get()
