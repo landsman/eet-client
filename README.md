@@ -5,9 +5,13 @@ starts on 2027-01-01. It builds the message, signs it with the taxpayer's certif
 office's signature on the answer and says what came of it, and renews the certificate before it expires. It needs
 Java 21; besides the JDK it uses only jackson-core, for the renewal API.
 
+It is built for a platform that registers sales for many merchants at once, a payment gateway or a marketplace:
+each merchant is a taxpayer with a certificate of their own, and every sale is reported in that merchant's name.
+One merchant registering their own sales is the same thing with a list of one.
+
 ```mermaid
 flowchart LR
-    pay["A customer pays at the till<br/>cash, a card terminal, a QR code"] --> report["The sale is reported<br/>to the tax office"]
+    pay["A customer pays at one merchant's till<br/>cash, a card terminal, a QR code"] --> report["The sale is reported to the tax office<br/>in that merchant's name"]
     refund["The money is handed back at the till<br/>a refund or a cancelled sale"] --> report
     report --> ok["Registered<br/>the tax office's code is kept with the sale"]
     report --> wait["No answer yet<br/>reported again later"]
