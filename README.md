@@ -8,6 +8,7 @@ Java 21; besides the JDK it uses only jackson-core, for the renewal API.
 ```mermaid
 flowchart LR
     pay["A customer pays at the till<br/>cash, a card terminal, a QR code"] --> report["The sale is reported<br/>to the tax office"]
+    refund["The money is handed back at the till<br/>a refund or a cancelled sale"] --> report
     report --> ok["Registered<br/>the tax office's code is kept with the sale"]
     report --> wait["No answer yet<br/>reported again later"]
     report --> refused["Refused<br/>the data is corrected and reported again"]
