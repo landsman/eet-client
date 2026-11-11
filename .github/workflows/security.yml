@@ -4,9 +4,11 @@ name: Security
 # scanner version or an extra default pack reaches this repo on its next run.
 on:
   workflow_dispatch:
-  # A draft runs nothing; marking it ready for review starts the run.
+  # A draft runs nothing; marking it ready for review starts the run. A change to Markdown alone scans nothing:
+  # the Monday run still scans the whole tree, a token pasted into a doc included.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: ['**.md']
   # A lockfile nobody touches still collects new advisories; only a run on an
   # unchanged commit sees them.
   schedule:
