@@ -1,4 +1,4 @@
-package cz.insuit.eet.renewal;
+package cz.insuit.eet;
 
 import java.io.IOException;
 import org.jspecify.annotations.Nullable;

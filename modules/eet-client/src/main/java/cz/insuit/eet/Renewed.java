@@ -1,10 +1,10 @@
-package cz.insuit.eet.renewal;
+package cz.insuit.eet;
 
 import java.time.Instant;
 
 /**
  * The new certificate as the CA hands it out: a PKCS#12 file and its 8-character password, which {@link
- * cz.insuit.eet.Signer#fromPkcs12} opens. Sensitive: neither belongs in a log.
+ * Signer#fromPkcs12} opens. Sensitive: neither belongs in a log.
  */
 public final class Renewed {
     private final byte[] pkcs12;

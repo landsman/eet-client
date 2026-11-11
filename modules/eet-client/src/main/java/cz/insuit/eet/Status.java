@@ -1,4 +1,4 @@
-package cz.insuit.eet.renewal;
+package cz.insuit.eet;
 
 import java.time.Duration;
 

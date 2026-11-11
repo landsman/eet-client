@@ -1,10 +1,9 @@
-package cz.insuit.eet.renewal;
+package cz.insuit.eet;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import cz.insuit.eet.Signer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -14,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import java.security.Signature;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -177,7 +177,10 @@ public final class Renewal implements AutoCloseable {
         String signed = B64URL.encodeToString(header.getBytes(StandardCharsets.UTF_8)) + "."
                 + B64URL.encodeToString(payload.getBytes(StandardCharsets.UTF_8));
         try {
-            return signed + "." + B64URL.encodeToString(signer.sign(signed.getBytes(StandardCharsets.US_ASCII)));
+            Signature rsa = Signature.getInstance("SHA256withRSA");
+            rsa.initSign(signer.key());
+            rsa.update(signed.getBytes(StandardCharsets.US_ASCII));
+            return signed + "." + B64URL.encodeToString(rsa.sign());
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("cannot sign with the certificate's key", e);
         }

@@ -1,4 +1,4 @@
-package cz.insuit.eet.renewal;
+package cz.insuit.eet;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
-import cz.insuit.eet.Signer;
-import cz.insuit.eet.TestKeys;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;

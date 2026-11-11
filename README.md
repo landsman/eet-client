@@ -137,8 +137,8 @@ checked, so reading an answer makes no network call.
 
 ## Renewing the certificate
 
-A valid certificate renews itself through the CA's API, with the classes in `cz.insuit.eet.renewal`: the request is
-signed with the certificate being renewed, so nobody has to log in. The CA asks for it two to three weeks before
+A valid certificate renews itself through the CA's API: the request is signed with the certificate being renewed, so
+nobody has to log in. The CA asks for it two to three weeks before
 expiry; an expired or revoked certificate can only be replaced by the taxpayer in MOJE daně.
 
 ```java
