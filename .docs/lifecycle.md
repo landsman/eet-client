@@ -24,9 +24,9 @@ flowchart TB
         send["EetClient.send<br/>signs, sends, checks the tax office's signature"]:::lib
         result{"Result"}:::lib
         accepted["Accepted: store the POK and the exchange"]:::app
-        uncertain["Uncertain: queue it in the database,<br/>in the sale's transaction"]:::app
+        uncertain["Uncertain: no clear answer<br/>queue it in the database, in the sale's transaction"]:::app
         resend["submission.resend()<br/>new message id, same sale"]:::lib
-        rejected["Rejected: fix the message"]:::app
+        rejected["Rejected: the tax office refused the data<br/>fix it and send again"]:::app
         contact -- no --> none
         contact -- yes --> build --> send --> result
         result --> accepted
