@@ -22,6 +22,7 @@ Checked against the state's playground. Published on GitHub Packages, not Maven 
 
 | Read | For |
 |---|---|
+| [What a merchant keeps an eye on](.docs/lifecycle.md) | the whole cycle in one diagram, from the certificate to its renewal, and who does each step |
 | [Installing](.docs/install.md) | the artifact on GitHub Packages, for Gradle and Maven, and a prompt for a coding assistant |
 | [Using the client](.docs/usage.md) | sending a sale, the four results, resends, stornos, what is left to you |
 | [Renewing the certificate](.docs/renewal.md) | a new certificate from the CA's API before the old one expires |
