@@ -13,3 +13,7 @@ project; keep it in step with the docs.
 
 A release is a tag `vX.Y.Z` on `main`, which
 [release.yml](../.github/workflows/release.yml) builds and publishes to GitHub Packages.
+
+`make scripts-test` shellchecks the scripts under `cli/` and runs their tests. `make spec-check` compares
+[spec/](../spec) with what eet.gov.cz publishes today; the weekly
+[spec workflow](../.github/workflows/spec.yml) runs the same and opens an issue when a file changed.
