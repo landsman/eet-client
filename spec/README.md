@@ -3,14 +3,16 @@
 Files published by the Czech tax administration for developers, unchanged, at
 [eet.gov.cz, Pro vývojáře](https://eet.gov.cz/cs/pro-vyvojare/dokumenty-ke-stazeni?category=provyvojare).
 Downloaded on 2026-11-10. The tests read them from here, so the library is checked against what the state
-published rather than against a copy of it.
+published rather than against a copy of it. Each file's source URL is listed in
+[cli/spec-check.sh](../cli/spec-check.sh), which the weekly [spec workflow](../.github/workflows/spec.yml) runs to
+open an issue when one changes or stops downloading; `make spec-check` runs it by hand.
 
 | File | What |
 |---|---|
 | `EETServiceSOAP.wsdl`, `EETXMLSchema.xsd` | the service and the message schema, interface 4.1 |
 | `requests/CZ*.eet.v4.req.xml` | the state's own signed sample requests, one per playground taxpayer |
 | `ca/ca_eet-root_*`, `ca/ca_eet-sub_*` | the CA that issues cash register certificates, playground and production |
-| `caeetapi_jwt.yml` | the CA's certificate renewal API, OpenAPI 3.1, unpacked from `caeetapi_jwt.zip` |
+| `caeetapi_jwt.yml` | the CA's certificate renewal API, OpenAPI 3.1, unpacked from [caeetapi_jwt.zip](https://eet.gov.cz/assets/cs/cmsmedia/pro-vyvojare/caeetapi_jwt.zip) |
 
 The renewal API's token needs `iat` and `exp` at most five minutes apart. The YAML says `{}` is enough; the
 binding text,
