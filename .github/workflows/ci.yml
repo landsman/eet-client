@@ -43,3 +43,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew -q javaToolchains
       - run: make build TESTS_JDK=${{ matrix.jdk }}
+
+  # The scripts under cli/ and their tests. Its own job: no JDK, and a red script is told apart from a red build.
+  scripts:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Only the shellcheck mise.toml pins, at that version; the JDK comes from setup-java in the build job.
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: shellcheck
+      - run: make scripts-test

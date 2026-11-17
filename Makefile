@@ -23,6 +23,15 @@ publish: ## build and publish the jar to GitHub Packages, as the release workflo
 publish-local: ## install the jar into ~/.m2, to try it in another project without a token
 	./gradlew publishToMavenLocal
 
+##@ Scripts
+.PHONY: scripts-test spec-check
+scripts-test: ## shellcheck every script, run every *.test.sh
+	mise exec shellcheck -- shellcheck $$(git ls-files '*.sh')
+	@rc=0; for t in $$(git ls-files '*.test.sh'); do echo "== $$t"; "./$$t" || { echo "FAIL $$t"; rc=1; }; done; exit $$rc
+
+spec-check: ## compare spec/ with what eet.gov.cz publishes today, as the weekly workflow does
+	./cli/spec-check.sh run
+
 ##@ Playground
 # The state's shared test certificates, published on eet.gov.cz for every tester; kept out of git all the same.
 PLAYGROUND_ZIP = https://eet.gov.cz/assets/cs/cmsmedia/pro-vyvojare/CAEET_Playground_2026_v1.zip

@@ -1,0 +1,27 @@
+name: spec
+
+# spec/ is the state's own files, which the tests read. They have no version for Dependabot to watch, so once a week
+# this compares them with eet.gov.cz and opens an issue when one changed or no longer downloads.
+on:
+  schedule:
+    - cron: '30 6 * * 1'
+  workflow_dispatch:
+
+# Never cancelled: a weekly run is the only one that week.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Red when anything moved, after the issue is opened or commented on.
+      - run: ./cli/spec-check.sh run --report
+        env:
+          GH_TOKEN: ${{ github.token }}
