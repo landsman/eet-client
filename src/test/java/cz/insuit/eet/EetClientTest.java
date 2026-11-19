@@ -39,7 +39,7 @@ class EetClientTest {
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", exchange -> {
-            String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String request = new String(SoapTest.bytes(exchange.getRequestBody()), StandardCharsets.UTF_8);
             contentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
             Matcher id = MESSAGE_ID.matcher(request);
             String body = answer.get().apply(request).replace("%ID%", id.find() ? id.group(1) : "");
@@ -190,9 +190,10 @@ class EetClientTest {
     }
 
     private static String odpoved(String content) {
-        return """
-                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" \
-                xmlns:eet="http://fs.gov.cz/eet/schema/v4"><soapenv:Body><eet:Odpoved>\
-                <eet:Hlavicka uuid_zpravy="%ID%" dat_prij="2027-01-09T16:45:41+01:00"/>""" + content + "</eet:Odpoved></soapenv:Body></soapenv:Envelope>";
+        return "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\""
+                + " xmlns:eet=\"http://fs.gov.cz/eet/schema/v4\"><soapenv:Body><eet:Odpoved>"
+                + "<eet:Hlavicka uuid_zpravy=\"%ID%\" dat_prij=\"2027-01-09T16:45:41+01:00\"/>"
+                + content
+                + "</eet:Odpoved></soapenv:Body></soapenv:Envelope>";
     }
 }

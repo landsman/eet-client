@@ -20,7 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Base64;
-import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -146,9 +146,9 @@ class RenewalTest {
     @Test
     void theOpenRequestsAreListed() throws IOException {
         answer(200, "{\"count\":1,\"data\":[\"" + ID + "\"]}");
-        assertEquals(List.of(ID), renewal.notFinished());
+        assertEquals(Collections.singletonList(ID), renewal.notFinished());
         answer(200, "{\"count\":0}");
-        assertEquals(List.of(), renewal.notFinished());
+        assertEquals(Collections.emptyList(), renewal.notFinished());
     }
 
     @Test

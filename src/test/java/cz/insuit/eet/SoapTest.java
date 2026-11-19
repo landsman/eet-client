@@ -8,15 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import javax.xml.XMLConstants;
@@ -32,7 +35,7 @@ import org.w3c.dom.Element;
 
 class SoapTest {
 
-    static final Path SPEC = Path.of(System.getProperty("eet.spec"));
+    static final Path SPEC = Paths.get(System.getProperty("eet.spec"));
     // Inside the playground response certificate's validity (2026-06-08 to 2027-06-08), so the recorded responses
     // keep verifying after it expires.
     private static final Instant RECORDED = Instant.parse("2026-11-10T16:11:45Z");
@@ -110,7 +113,8 @@ class SoapTest {
         Soap.Response response = Soap.parse(recorded("warning-response.xml"));
         assertNotNull(response.pok());
         assertEquals(
-                List.of(new Result.Warning(6, "id_jednotky neodpovida formatem pridelenemu c. evidencni jednotky")),
+                Collections.singletonList(
+                        new Result.Warning(6, "id_jednotky neodpovida formatem pridelenemu c. evidencni jednotky")),
                 response.warnings());
     }
 
@@ -151,9 +155,12 @@ class SoapTest {
 
     @Test
     void refusesAFaultAndAnythingElse() {
-        assertThrows(Soap.InvalidResponseException.class, () -> Soap.parse("""
-                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>
-                <soapenv:Fault><faultstring>nope</faultstring></soapenv:Fault></soapenv:Body></soapenv:Envelope>""".getBytes(StandardCharsets.UTF_8)));
+        assertThrows(
+                Soap.InvalidResponseException.class,
+                () -> Soap.parse(("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                                + "<soapenv:Body>\n<soapenv:Fault><faultstring>nope</faultstring></soapenv:Fault>"
+                                + "</soapenv:Body></soapenv:Envelope>")
+                        .getBytes(StandardCharsets.UTF_8)));
         assertThrows(Soap.InvalidResponseException.class, () -> Soap.parse("<html/>".getBytes(StandardCharsets.UTF_8)));
         assertThrows(
                 Soap.InvalidResponseException.class,
@@ -167,8 +174,16 @@ class SoapTest {
 
     static byte[] recorded(String name) throws IOException {
         try (InputStream in = SoapTest.class.getResourceAsStream("playground/" + name)) {
-            return Objects.requireNonNull(in, name).readAllBytes();
+            return bytes(Objects.requireNonNull(in, name));
         }
+    }
+
+    // InputStream.readAllBytes is Java 9.
+    static byte[] bytes(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        for (int n; (n = in.read(buffer)) != -1; ) out.write(buffer, 0, n);
+        return out.toByteArray();
     }
 
     private static @Nullable String verify(Document doc, String organizationIdentifier) throws Exception {
@@ -178,7 +193,7 @@ class SoapTest {
 
     private static List<X509Certificate> ica(String name) throws Exception {
         try (InputStream in = EetClient.class.getResourceAsStream(name)) {
-            return List.of(
+            return Collections.singletonList(
                     (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(in));
         }
     }

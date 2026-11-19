@@ -17,9 +17,9 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.naming.InvalidNameException;
@@ -32,7 +32,6 @@ import javax.xml.crypto.dom.DOMStructure;
 import javax.xml.crypto.dsig.CanonicalizationMethod;
 import javax.xml.crypto.dsig.DigestMethod;
 import javax.xml.crypto.dsig.Reference;
-import javax.xml.crypto.dsig.SignatureMethod;
 import javax.xml.crypto.dsig.SignedInfo;
 import javax.xml.crypto.dsig.XMLSignature;
 import javax.xml.crypto.dsig.XMLSignatureException;
@@ -45,6 +44,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -74,6 +74,8 @@ final class Soap {
             "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary";
     // Always an offset, never Z: the interface describes 25 characters, +01:00 in winter and +02:00 in summer.
     static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ssxxx");
+    // SignatureMethod.RSA_SHA256 from Java 11 on; the JDK's XML signature has supported the URI since Java 8.
+    private static final String RSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
     // organizationIdentifier, which X500Principal has no keyword for.
     private static final String ORGANIZATION_IDENTIFIER = "2.5.4.97";
 
@@ -147,19 +149,21 @@ final class Soap {
             Reference reference = factory.newReference(
                     "#" + bodyId,
                     factory.newDigestMethod(DigestMethod.SHA256, null),
-                    List.of(factory.newTransform(CanonicalizationMethod.EXCLUSIVE, new ExcC14NParameterSpec())),
+                    Collections.singletonList(
+                            factory.newTransform(CanonicalizationMethod.EXCLUSIVE, new ExcC14NParameterSpec())),
                     null,
                     null);
             SignedInfo signedInfo = factory.newSignedInfo(
                     factory.newCanonicalizationMethod(CanonicalizationMethod.EXCLUSIVE, new ExcC14NParameterSpec()),
-                    factory.newSignatureMethod(SignatureMethod.RSA_SHA256, null),
-                    List.of(reference));
+                    factory.newSignatureMethod(RSA_SHA256, null),
+                    Collections.singletonList(reference));
 
             Element tokenReference = doc.createElementNS(WSSE_NS, "wsse:SecurityTokenReference");
             Element tokenPointer = child(tokenReference, WSSE_NS, "wsse:Reference");
             tokenPointer.setAttribute("URI", "#" + tokenId);
             tokenPointer.setAttribute("ValueType", X509_TOKEN);
-            KeyInfo keyInfo = factory.getKeyInfoFactory().newKeyInfo(List.of(new DOMStructure(tokenReference)));
+            KeyInfo keyInfo =
+                    factory.getKeyInfoFactory().newKeyInfo(Collections.singletonList(new DOMStructure(tokenReference)));
 
             DOMSignContext context = new DOMSignContext(signer.key(), security);
             context.setDefaultNamespacePrefix("ds");
@@ -172,14 +176,63 @@ final class Soap {
     // ---- response
 
     /** A response as parsed: exactly one of {@code pok} and {@code errorCode} is set. */
-    record Response(
-            @Nullable String messageId,
-            @Nullable String pok,
-            boolean test,
-            @Nullable Integer errorCode,
-            String errorText,
-            List<Result.Warning> warnings,
-            Document document) {}
+    static final class Response {
+        private final @Nullable String messageId;
+        private final @Nullable String pok;
+        private final boolean test;
+        private final @Nullable Integer errorCode;
+        private final String errorText;
+        private final List<Result.Warning> warnings;
+        private final Document document;
+
+        Response(
+                @Nullable String messageId,
+                @Nullable String pok,
+                boolean test,
+                @Nullable Integer errorCode,
+                String errorText,
+                List<Result.Warning> warnings,
+                Document document) {
+            this.messageId = messageId;
+            this.pok = pok;
+            this.test = test;
+            this.errorCode = errorCode;
+            this.errorText = errorText;
+            this.warnings = warnings;
+            this.document = document;
+        }
+
+        @Nullable
+        String messageId() {
+            return messageId;
+        }
+
+        @Nullable
+        String pok() {
+            return pok;
+        }
+
+        boolean test() {
+            return test;
+        }
+
+        @Nullable
+        Integer errorCode() {
+            return errorCode;
+        }
+
+        String errorText() {
+            return errorText;
+        }
+
+        List<Result.Warning> warnings() {
+            return warnings;
+        }
+
+        Document document() {
+            return document;
+        }
+    }
 
     /** Parses a response body; throws when it is not an {@code Odpoved}, a SOAP fault included. */
     static Response parse(byte[] bytes) throws InvalidResponseException {
@@ -194,7 +247,7 @@ final class Soap {
         Element fault = only(body, SOAP_NS, "Fault");
         if (fault != null)
             throw new InvalidResponseException(
-                    "SOAP fault: " + fault.getTextContent().strip());
+                    "SOAP fault: " + fault.getTextContent().trim());
         Element odpoved = only(body, EET_NS, "Odpoved");
         if (odpoved == null) throw new InvalidResponseException("no Odpoved in the Body");
 
@@ -203,7 +256,7 @@ final class Soap {
         List<Result.Warning> warnings = new ArrayList<>();
         for (Element w : children(odpoved, EET_NS, "Varovani")) {
             warnings.add(new Result.Warning(
-                    integer(attribute(w, "kod_varov")), w.getTextContent().strip()));
+                    integer(attribute(w, "kod_varov")), w.getTextContent().trim()));
         }
         Element potvrzeni = only(odpoved, EET_NS, "Potvrzeni");
         String pok = potvrzeni == null ? null : attribute(potvrzeni, "pok");
@@ -218,7 +271,7 @@ final class Soap {
                     null,
                     isTrue(chyba, "test"),
                     integer(code),
-                    chyba.getTextContent().strip(),
+                    chyba.getTextContent().trim(),
                     warnings,
                     doc);
         }
@@ -331,7 +384,7 @@ final class Soap {
             // It only writes our own document, but nothing it is ever handed may fetch a DTD or a stylesheet.
             factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
             factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
-            var transformer = factory.newTransformer();
+            Transformer transformer = factory.newTransformer();
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
             transformer.setOutputProperty(OutputKeys.INDENT, "no");
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -367,18 +420,19 @@ final class Soap {
         List<Element> found = new ArrayList<>();
         NodeList nodes = parent.getChildNodes();
         for (int i = 0; i < nodes.getLength(); i++) {
-            if (nodes.item(i) instanceof Element e
-                    && namespace.equals(e.getNamespaceURI())
-                    && localName.equals(e.getLocalName())) {
-                found.add(e);
+            Node node = nodes.item(i);
+            if (node instanceof Element
+                    && namespace.equals(node.getNamespaceURI())
+                    && localName.equals(node.getLocalName())) {
+                found.add((Element) node);
             }
         }
         return found;
     }
 
     private static @Nullable Element only(Node parent, String namespace, String localName) {
-        if (!(parent instanceof Element element)) return null;
-        List<Element> found = children(element, namespace, localName);
+        if (!(parent instanceof Element)) return null;
+        List<Element> found = children((Element) parent, namespace, localName);
         return found.size() == 1 ? found.get(0) : null;
     }
 
@@ -393,7 +447,7 @@ final class Soap {
 
     private static int integer(@Nullable String value) throws InvalidResponseException {
         try {
-            return Integer.parseInt(value == null ? "" : value.strip());
+            return Integer.parseInt(value == null ? "" : value.trim());
         } catch (NumberFormatException e) {
             throw new InvalidResponseException("not a number: " + value);
         }
@@ -401,7 +455,8 @@ final class Soap {
 
     private static @Nullable String organizationIdentifier(X500Principal subject) {
         try {
-            String name = subject.getName(X500Principal.RFC2253, Map.of(ORGANIZATION_IDENTIFIER, "ORGID"));
+            String name =
+                    subject.getName(X500Principal.RFC2253, Collections.singletonMap(ORGANIZATION_IDENTIFIER, "ORGID"));
             for (Rdn rdn : new LdapName(name).getRdns()) {
                 if (rdn.getType().equalsIgnoreCase("ORGID")) return String.valueOf(rdn.getValue());
             }

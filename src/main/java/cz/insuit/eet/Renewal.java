@@ -6,10 +6,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -29,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Renews a cash register certificate through the CA's API ({@code spec/caeetapi_jwt.yml}), signed with the
- * certificate being renewed. Thread-safe; close it to release its HTTP client.
+ * certificate being renewed. Thread-safe.
  *
  * <pre>{@code
  * try (Renewal renewal = Renewal.of(Server.PRODUCTION, signer)) {
@@ -60,14 +58,12 @@ public final class Renewal implements AutoCloseable {
     private final URI base;
     private final Signer signer;
     private final Clock clock;
-    private final HttpClient http;
     private final String thumbprint;
 
     Renewal(URI base, Signer signer, Clock clock) {
         this.base = base;
         this.signer = signer;
         this.clock = clock;
-        this.http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
         try {
             this.thumbprint = B64URL.encodeToString(MessageDigest.getInstance("SHA-256")
                     .digest(signer.certificate().getEncoded()));
@@ -81,10 +77,9 @@ public final class Renewal implements AutoCloseable {
         return new Renewal(server.base(), signer, Clock.systemUTC());
     }
 
+    /** Holds nothing open any more; kept so a try-with-resources around it still compiles. */
     @Override
-    public void close() {
-        EetClient.release(http);
-    }
+    public void close() {}
 
     /** Asks for a successor certificate, and returns the request's id. */
     public UUID request() throws IOException {
@@ -94,14 +89,21 @@ public final class Renewal implements AutoCloseable {
     /** How the request {@code id} stands. */
     public Status status(UUID id) throws IOException {
         Map<String, Object> body = object(call("GET", "/request/" + id + "/status", 200));
-        return switch (string(body, "state")) {
-            case "INPROCESS" -> new Status.InProcess(Duration.ofSeconds(number(body, "pollAfterSeconds")));
-            case "ISSUED" -> new Status.Issued();
-            case "DELIVERING" -> new Status.Delivering();
-            case "FINISHED" -> new Status.Finished();
-            case "REJECTED" -> new Status.Rejected(string(body, "rejectedReason"));
-            default -> throw new IOException("unknown state " + body.get("state"));
-        };
+        String state = string(body, "state");
+        switch (state) {
+            case "INPROCESS":
+                return new Status.InProcess(Duration.ofSeconds(number(body, "pollAfterSeconds")));
+            case "ISSUED":
+                return new Status.Issued();
+            case "DELIVERING":
+                return new Status.Delivering();
+            case "FINISHED":
+                return new Status.Finished();
+            case "REJECTED":
+                return new Status.Rejected(string(body, "rejectedReason"));
+            default:
+                throw new IOException("unknown state " + state);
+        }
     }
 
     /** Downloads the issued certificate. Store it before {@link #acknowledge}: after that the CA deletes its copy. */
@@ -131,35 +133,30 @@ public final class Renewal implements AutoCloseable {
     public List<UUID> notFinished() throws IOException {
         Object data = object(call("GET", "/request/not-finished", 200)).get("data");
         List<UUID> ids = new ArrayList<>();
-        if (data instanceof List<?> list) list.forEach(id -> ids.add(UUID.fromString(String.valueOf(id))));
+        if (data instanceof List<?>) ((List<?>) data).forEach(id -> ids.add(UUID.fromString(String.valueOf(id))));
         return ids;
     }
 
     private byte[] call(String method, String path, int expected) throws IOException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(base + path))
-                .timeout(TIMEOUT)
-                .header("Authorization", "Bearer " + token())
-                .header("Accept", "application/json")
-                .method(method, HttpRequest.BodyPublishers.noBody())
-                .build();
-        HttpResponse<byte[]> response;
-        try {
-            response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("interrupted while waiting for the CA", e);
-        }
-        if (response.statusCode() == expected) return response.body();
+        HttpURLConnection http = Http.open(URI.create(base + path), method, TIMEOUT);
+        http.setRequestProperty("Authorization", "Bearer " + token());
+        http.setRequestProperty("Accept", "application/json");
+        // A POST goes with an empty body, so it carries Content-Length: 0.
+        byte[] body = Http.exchange(http, method.equals("POST") ? new byte[0] : null);
+        int status = http.getResponseCode();
+        if (status == expected) return body;
         @Nullable Integer code = null;
-        String message = new String(response.body(), StandardCharsets.UTF_8);
+        String message = new String(body, StandardCharsets.UTF_8);
         try {
-            Map<String, Object> error = object(response.body());
-            if (error.get("code") instanceof Number n) code = n.intValue();
-            message = error.get("message") + (error.get("additionalInfo") instanceof String info ? " " + info : "");
+            Map<String, Object> error = object(body);
+            Object errorCode = error.get("code");
+            Object info = error.get("additionalInfo");
+            if (errorCode instanceof Number) code = ((Number) errorCode).intValue();
+            message = error.get("message") + (info instanceof String ? " " + info : "");
         } catch (IOException notJson) {
             // the body as it came, read above
         }
-        throw new RenewalException(response.statusCode(), code, message);
+        throw new RenewalException(status, code, message);
     }
 
     /** A JWS signed with the certificate being renewed, which the CA finds by its SHA-256 thumbprint. */
@@ -199,7 +196,7 @@ public final class Renewal implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        return out.toString(StandardCharsets.UTF_8);
+        return new String(out.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private static Map<String, Object> object(byte[] body) throws IOException {
@@ -251,13 +248,15 @@ public final class Renewal implements AutoCloseable {
     }
 
     private static long number(Map<String, Object> body, String field) throws IOException {
-        if (required(body, field) instanceof Number n) return n.longValue();
+        Object value = required(body, field);
+        if (value instanceof Number) return ((Number) value).longValue();
         throw new IOException(field + " is not a number");
     }
 
     @SuppressWarnings("unchecked") // readObject builds every nested object as a Map<String, Object>
     private static Map<String, Object> object(Map<String, Object> body, String field) throws IOException {
-        if (required(body, field) instanceof Map<?, ?> map) return (Map<String, Object>) map;
+        Object value = required(body, field);
+        if (value instanceof Map<?, ?>) return (Map<String, Object>) value;
         throw new IOException(field + " is not an object");
     }
 

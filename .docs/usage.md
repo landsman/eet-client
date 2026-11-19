@@ -8,15 +8,17 @@ Sale sale = Sale.of("CZ00000019", 11, "till-1", "2027/000123", paidAt, 12350); /
 Submission submission = Submission.of(sale);
 Result result = eet.send(submission);
 
-switch (result) {
-    case Result.Accepted a -> store(a.pok(), a.exchange());          // registered
-    case Result.Uncertain u -> retryLater(submission.resend());      // nobody knows yet
-    case Result.Rejected r -> alert(r.code(), r.message());           // fix the message
-    case Result.Verified v -> {}                                      // a dry run passed
-}
+if (result instanceof Result.Accepted a) {
+    store(a.pok(), a.exchange());                                     // registered
+} else if (result instanceof Result.Uncertain) {
+    retryLater(submission.resend());                                  // nobody knows yet
+} else if (result instanceof Result.Rejected r) {
+    alert(r.code(), r.message());                                     // fix the message
+}                                                                     // else Verified: a dry run passed
 ```
 
-A `switch` over types needs Java 21; on 17 the same is a chain of `if (result instanceof Result.Accepted a)`.
+Those four are all there is, but `Result` is not sealed: a `switch` over it needs a `default`. Before Java 16, cast
+after each `instanceof`.
 
 ## What it does and what it leaves to you
 
@@ -36,7 +38,7 @@ A sale the certificate cannot sign, because it expired or is another taxpayer's,
 `Uncertain` with `Reason.CERTIFICATE`, to be held and sent once a valid certificate signs it, rather than refused for
 good by the tax office. `signer.eic()` and `signer.notAfter()` read the certificate for the checks and warnings of your
 own. A refund handed back in person is `sale.storno(sequenceNumber, time)`, a sale of its own with every amount
-negated. One `EetClient` per certificate; `close()` it when the certificate is replaced.
+negated. One `EetClient` per certificate.
 
 The certificate is the taxpayer's: they download it as a `.p12` with a password from MOJE daně, and it is valid
 for 366 days. `Signer.of(key, certificate)` takes a key held somewhere else.
