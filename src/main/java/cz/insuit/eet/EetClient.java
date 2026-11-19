@@ -49,6 +49,7 @@ public final class EetClient implements AutoCloseable {
     private final List<X509Certificate> anchors;
     private final List<X509Certificate> intermediates;
     private final String responseSigner;
+    private volatile boolean closed;
 
     private EetClient(Builder b) {
         environment = b.environment;
@@ -75,7 +76,20 @@ public final class EetClient implements AutoCloseable {
     /** Releases the HTTP client. A send after this comes back uncertain, as a network failure. */
     @Override
     public void close() {
-        http.close();
+        closed = true;
+        release(http);
+    }
+
+    // HttpClient is AutoCloseable from Java 21 on. On 17 it has no close(), its thread stops once the client is
+    // collected, so the flag above is what keeps a closed client from sending.
+    static void release(HttpClient http) {
+        if (http instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                throw new IllegalStateException("cannot close the HTTP client", e);
+            }
+        }
     }
 
     /**
@@ -83,6 +97,9 @@ public final class EetClient implements AutoCloseable {
      * cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
      */
     public Result send(Submission submission) {
+        if (closed) {
+            return uncertain(Result.Reason.NETWORK, "the client is closed", submission, "", null, null);
+        }
         @Nullable String unsignable = unsignable(submission.sale());
         if (unsignable != null) {
             return uncertain(Result.Reason.CERTIFICATE, unsignable, submission, "", null, null);

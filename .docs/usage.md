@@ -16,6 +16,8 @@ switch (result) {
 }
 ```
 
+A `switch` over types needs Java 21; on 17 the same is a chain of `if (result instanceof Result.Accepted a)`.
+
 ## What it does and what it leaves to you
 
 The client sends one attempt per call and never retries by itself. An uncertain result (a timeout, error -1, an

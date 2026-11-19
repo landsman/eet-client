@@ -1,6 +1,6 @@
 # eet-client
 
-> A Java 21+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
+> A Java 17+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
 > builds the SOAP message, signs it with the taxpayer's certificate, sends it, checks the tax office's signature on
 > the answer and returns a sealed Result. Depends on the JDK, JSpecify and jackson-core (for the CA's renewal API). Published on GitHub Packages
 > (`cz.insuit:eet-client`), not Maven Central. Pre-1.0.

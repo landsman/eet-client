@@ -83,7 +83,7 @@ public final class Renewal implements AutoCloseable {
 
     @Override
     public void close() {
-        http.close();
+        EetClient.release(http);
     }
 
     /** Asks for a successor certificate, and returns the request's id. */

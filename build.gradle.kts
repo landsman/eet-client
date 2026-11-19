@@ -9,7 +9,7 @@ plugins {
     id("net.ltgt.errorprone") version "5.2.0"
 }
 
-// Compiled once, for release 21, on whatever JDK runs Gradle; the tests run on the JDK -PtestsJdk names, so CI's
+// Compiled once, for release 17, on whatever JDK runs Gradle; the tests run on the JDK -PtestsJdk names, so CI's
 // matrix checks the jar on each JDK it supports. Without it they run on Gradle's own.
 val testsJdk = providers.gradleProperty("testsJdk")
 
@@ -24,8 +24,8 @@ repositories {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // Built on any current JDK, usable from Java 21.
-    options.release = 21
+    // Built on any current JDK, usable from Java 17.
+    options.release = 17
 }
 
 tasks.withType<Test>().configureEach {

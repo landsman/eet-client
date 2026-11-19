@@ -23,6 +23,8 @@ void claim(Renewal renewal, UUID id) throws IOException {
 }
 ```
 
+On Java 17, which has no `switch` over types, the `switch` is a chain of `instanceof`.
+
 `claim` returns the same file again until `acknowledge`, so a crash between the two loses nothing; an issued
 certificate nobody claims is gone after 30 days. `notFinished()` finds a request whose id was lost. A non-success
 answer is a `RenewalException` with the HTTP status and the CA's code.

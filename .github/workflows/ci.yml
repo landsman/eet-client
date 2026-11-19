@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Every JDK the jar promises to run on. It is compiled once per job on 25, for release 21; only the tests
-      # move. 17 is not here: release 21 classes do not load on it.
+      # Every JDK the jar promises to run on. It is compiled once per job on 25, for release 17; only the tests
+      # move. 21 stays: it is the first JDK whose HttpClient close() really runs.
       matrix:
-        jdk: [21, 25]
+        jdk: [17, 21, 25]
     steps:
       - uses: actions/checkout@v7
       # The last one listed becomes JAVA_HOME, which Gradle runs on; the matrix JDK is found as a toolchain.
