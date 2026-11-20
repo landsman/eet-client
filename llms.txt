@@ -18,8 +18,9 @@ Setting it up in a project:
 - `Sale.of(eic, unitId, registerId, sequenceNumber, time, total)`, optional parts through `with…` methods;
   `Submission.of(sale)`; `eet.send(submission)`.
 - `Result` is `Accepted` (pok, warnings), `Uncertain` (send again), `Rejected` (fix the message) or `Verified` (a
-  dry run passed). Handle all four; `Result` is not sealed, so a `switch` or a Kotlin `when` over it needs a
-  `default` or an `else`.
+  dry run passed). Handle all four with `result.match(accepted, verified, rejected, uncertain)`, one function each,
+  which the compiler checks; `Result` is not sealed, so a `switch` or a Kotlin `when` over it needs a `default` or
+  an `else` and checks nothing. `Status` has the same `match`.
 
 Mistakes to avoid:
 

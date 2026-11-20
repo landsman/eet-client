@@ -2,6 +2,7 @@ package cz.insuit.eet;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -13,6 +14,22 @@ public interface Result {
 
     /** The message as sent and the answer as received. */
     Exchange exchange();
+
+    /**
+     * Hands this result to the function for its kind and returns what that one returns. Every kind needs a function,
+     * so none can be forgotten, and a kind added later breaks the build instead of slipping past: what a {@code
+     * switch} over a sealed type checks on Java 17 and later.
+     */
+    default <T extends @Nullable Object> T match(
+            Function<? super Accepted, ? extends T> accepted,
+            Function<? super Verified, ? extends T> verified,
+            Function<? super Rejected, ? extends T> rejected,
+            Function<? super Uncertain, ? extends T> uncertain) {
+        if (this instanceof Accepted) return accepted.apply((Accepted) this);
+        if (this instanceof Verified) return verified.apply((Verified) this);
+        if (this instanceof Rejected) return rejected.apply((Rejected) this);
+        return uncertain.apply((Uncertain) this);
+    }
 
     /**
      * The sale is registered. Every accepted attempt gets its own POK, a resend of an already accepted sale

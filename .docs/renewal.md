@@ -23,7 +23,8 @@ void claim(Renewal renewal, UUID id) throws IOException {
 }
 ```
 
-`Status` is not sealed either, so a `switch` over it needs a `default`. `Renewal` holds nothing open; its `close()`
+`status.match(...)` takes one function per state, so none can be forgotten, as `Result.match` does; `Status` is not
+sealed, so a `switch` over it needs a `default`. `Renewal` holds nothing open; its `close()`
 is there for the try-with-resources an older version asked for.
 
 `claim` returns the same file again until `acknowledge`, so a crash between the two loses nothing; an issued

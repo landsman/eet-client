@@ -1,12 +1,29 @@
 package cz.insuit.eet;
 
 import java.time.Duration;
+import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /**
  * How a renewal request stands: {@link InProcess}, {@link Issued}, {@link Delivering}, {@link Finished} or {@link
  * Rejected}, and nothing else.
  */
 public interface Status {
+
+    /** As {@link Result#match}: one function per state, so none can be forgotten. */
+    default <T extends @Nullable Object> T match(
+            Function<? super InProcess, ? extends T> inProcess,
+            Function<? super Issued, ? extends T> issued,
+            Function<? super Delivering, ? extends T> delivering,
+            Function<? super Finished, ? extends T> finished,
+            Function<? super Rejected, ? extends T> rejected) {
+        if (this instanceof InProcess) return inProcess.apply((InProcess) this);
+        if (this instanceof Issued) return issued.apply((Issued) this);
+        if (this instanceof Delivering) return delivering.apply((Delivering) this);
+        if (this instanceof Finished) return finished.apply((Finished) this);
+        return rejected.apply((Rejected) this);
+    }
+
     /** Not issued yet; ask again after {@code pollAfter}. */
     final class InProcess extends Value implements Status {
         private final Duration pollAfter;

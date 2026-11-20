@@ -8,17 +8,17 @@ Sale sale = Sale.of("CZ00000019", 11, "till-1", "2027/000123", paidAt, 12350); /
 Submission submission = Submission.of(sale);
 Result result = eet.send(submission);
 
-if (result instanceof Result.Accepted a) {
-    store(a.pok(), a.exchange());                                     // registered
-} else if (result instanceof Result.Uncertain) {
-    retryLater(submission.resend());                                  // nobody knows yet
-} else if (result instanceof Result.Rejected r) {
-    alert(r.code(), r.message());                                     // fix the message
-}                                                                     // else Verified: a dry run passed
+SaleState state = result.match(
+        a -> registered(a.pok(), a.exchange()),                       // registered
+        v -> SaleState.CHECKED,                                       // a dry run passed
+        r -> refused(r.code(), r.message()),                          // fix the message
+        u -> queued(submission.resend()));                            // nobody knows yet
 ```
 
-Those four are all there is, but `Result` is not sealed: a `switch` over it needs a `default`. Before Java 16, cast
-after each `instanceof`.
+`match` takes one function per kind, so the compiler checks that all four are handled, on Java 8 as on 21 and in
+Kotlin, and a kind added later breaks the build instead of slipping past. Each function returns a value. Code that
+only acts, or throws a checked exception, can use an `instanceof` chain instead, which nothing checks; `Result` is
+not sealed, so a `switch` over it needs a `default`.
 
 ## What it does and what it leaves to you
 
