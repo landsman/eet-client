@@ -71,8 +71,8 @@ public final class EetClient implements AutoCloseable {
     }
 
     /**
-     * Signs and sends one attempt, and waits for the answer at most the timeout. A sale this client's certificate
-     * cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
+     * Signs and sends one attempt, waiting at most the timeout to connect and then the timeout for each read of the
+     * answer. A sale this client's certificate cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
      */
     public Result send(Submission submission) {
         if (closed) {
@@ -95,7 +95,14 @@ public final class EetClient implements AutoCloseable {
             status = http.getResponseCode();
             transactionId = http.getHeaderField("X-Global-Transaction-Id");
         } catch (SocketTimeoutException e) {
-            return uncertain(Result.Reason.TIMEOUT, "no answer within " + timeout, submission, sent, null, null);
+            // "connect timed out" means nothing was sent, "Read timed out" that the sale may be registered.
+            return uncertain(
+                    Result.Reason.TIMEOUT,
+                    "no answer within " + timeout + ": " + e.getMessage(),
+                    submission,
+                    sent,
+                    null,
+                    null);
         } catch (IOException e) {
             return uncertain(Result.Reason.NETWORK, String.valueOf(e), submission, sent, null, null);
         }
@@ -201,8 +208,8 @@ public final class EetClient implements AutoCloseable {
         }
 
         /**
-         * How long to wait for an answer, two seconds by default. The act sets two seconds as the least, and asks for
-         * a value that does not hold up the sale.
+         * How long to wait to connect, and then for each read of the answer, two seconds by default; the name lookup is
+         * not covered. The act sets two seconds as the least, and asks for a value that does not hold up the sale.
          */
         public Builder timeout(Duration timeout) {
             if (timeout.compareTo(MINIMUM_TIMEOUT) < 0) {

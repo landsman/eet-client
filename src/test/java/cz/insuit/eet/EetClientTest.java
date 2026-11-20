@@ -120,6 +120,7 @@ class EetClientTest {
         answer(odpoved("<eet:Chyba kod=\"0\" test=\"true\">late</eet:Chyba>"));
         Result.Uncertain result = assertInstanceOf(Result.Uncertain.class, send(Submission.of(SoapTest.sale())));
         assertEquals(Result.Reason.TIMEOUT, result.reason());
+        assertTrue(result.detail().endsWith("Read timed out"), result.detail());
         assertTrue(result.exchange().request().contains("prvni_zaslani=\"true\""));
     }
 
