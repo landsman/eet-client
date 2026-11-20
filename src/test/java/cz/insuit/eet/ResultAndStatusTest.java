@@ -62,8 +62,9 @@ class ResultAndStatusTest {
     void printsLikeARecord() {
         assertEquals("InProcess[pollAfter=PT2S]", new Status.InProcess(Duration.ofSeconds(2)).toString());
         assertEquals("Finished[]", new Status.Finished().toString());
+        // Except an exchange, whose bodies run to kilobytes.
         assertEquals(
-                "Exchange[messageId=" + EXCHANGE.messageId() + ", request=, response=null, transactionId=null]",
+                "Exchange[messageId=" + EXCHANGE.messageId() + ", transactionId=null, request=0 chars, response=none]",
                 EXCHANGE.toString());
     }
 }

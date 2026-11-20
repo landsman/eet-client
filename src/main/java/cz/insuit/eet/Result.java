@@ -260,5 +260,14 @@ public interface Result {
                 "messageId", messageId, "request", request, "response", response, "transactionId", transactionId
             };
         }
+
+        /** The ids and the bodies' lengths, so a log line stays findable; the bodies are one accessor away. */
+        @Override
+        public String toString() {
+            return "Exchange[messageId=" + messageId + ", transactionId=" + transactionId + ", request="
+                    + request.length() + " chars, response="
+                    + (response == null ? "none" : response.length() + " chars")
+                    + "]";
+        }
     }
 }
