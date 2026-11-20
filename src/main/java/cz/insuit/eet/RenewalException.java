@@ -3,14 +3,17 @@ package cz.insuit.eet;
 import java.io.IOException;
 import org.jspecify.annotations.Nullable;
 
-/** An answer other than success: the HTTP status, and the CA's error code and message when it sent them. */
+/**
+ * An answer other than success: the HTTP status, and the CA's error code and message when it sent them, or its whole
+ * body when that was not JSON. The CA's text is escaped as a result's toString escapes it, so it logs as one line.
+ */
 public final class RenewalException extends IOException {
     private static final long serialVersionUID = 1L;
     private final int status;
     private final @Nullable Integer code;
 
     RenewalException(int status, @Nullable Integer code, String message) {
-        super("HTTP " + status + (code == null ? "" : ", code " + code) + ": " + message);
+        super("HTTP " + status + (code == null ? "" : ", code " + code) + ": " + Value.loggable(message));
         this.status = status;
         this.code = code;
     }

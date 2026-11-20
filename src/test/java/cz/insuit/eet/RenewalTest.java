@@ -171,10 +171,25 @@ class RenewalTest {
         assertEquals(5, e.code());
         assertEquals("HTTP 409, code 5: Conflict. Some more info.", e.getMessage());
 
-        answer(502, "<html>bad gateway</html>");
+        answer(502, "<html>\nbad gateway</html>");
         RenewalException html = assertThrows(RenewalException.class, () -> renewal.status(ID));
         assertEquals(502, html.status());
         assertNull(html.code());
+        // A proxy's page, or the CA's own text, logs as one line.
+        assertEquals("HTTP 502: <html>\\u000abad gateway</html>", html.getMessage());
+        answer(409, "{\"code\":5,\"message\":\"Conflict.\\nINFO forged\"}");
+        assertEquals(
+                "HTTP 409, code 5: Conflict.\\u000aINFO forged",
+                assertThrows(RenewalException.class, () -> renewal.acknowledge(ID))
+                        .getMessage());
+    }
+
+    @Test
+    void anUnknownStateLogsAsOneLine() {
+        answer(200, "{\"state\":\"NEW\\nINFO forged\"}");
+        assertEquals(
+                "unknown state NEW\\u000aINFO forged",
+                assertThrows(IOException.class, () -> renewal.status(ID)).getMessage());
     }
 
     @Test
