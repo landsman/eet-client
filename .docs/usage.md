@@ -46,3 +46,11 @@ for 366 days. `Signer.of(key, certificate)` takes a key held somewhere else.
 The answer is trusted only when it is signed over its Body by a certificate of the tax office
 (`organizationIdentifier=NTRCZ-72080043`) issued under I.CA's root, valid at the time of reading. Revocation is not
 checked, so reading an answer makes no network call.
+
+The connection is the JDK's `HttpURLConnection`, so the JVM's settings for it apply here too: the proxy properties,
+`http.keepAlive`, and `http.maxConnections`, which keeps at most 5 idle connections per host. When sending for many
+merchants at once, raise it, or every send past the fifth at a time opens a connection with a new TLS handshake.
+`HttpsURLConnection`'s JVM-wide trust settings do not apply: each connection checks the certificate and the host name
+as the JDK does by default. The timeout covers connecting and then each read, not the name lookup. An interrupt does
+not stop a send on a platform thread, which waits out its timeouts; on a virtual thread it closes the socket, and the
+send comes back `Uncertain` with `Reason.NETWORK`.
