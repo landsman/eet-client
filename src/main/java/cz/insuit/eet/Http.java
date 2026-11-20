@@ -46,11 +46,14 @@ final class Http {
         return connection;
     }
 
-    /**
-     * Sends {@code body}, or none when null, and reads the answer whatever its status: an error's body is evidence
-     * too. Read to the end, so the connection can serve the next request.
-     */
+    /** As {@link #send}, then {@link #read}. */
     static byte[] exchange(HttpURLConnection connection, byte @Nullable [] body) throws IOException {
+        send(connection, body);
+        return read(connection);
+    }
+
+    /** Sends {@code body}, or none when null, and returns the status once it and the headers are in, not the body. */
+    static int send(HttpURLConnection connection, byte @Nullable [] body) throws IOException {
         if (body != null) {
             connection.setDoOutput(true);
             // Streamed, not buffered, which also stops the JDK from sending a POST twice on a stale connection.
@@ -59,6 +62,14 @@ final class Http {
                 out.write(body);
             }
         }
+        return connection.getResponseCode();
+    }
+
+    /**
+     * Reads the answer whatever its status: an error's body is evidence too. Read to the end, so the connection can
+     * serve the next request.
+     */
+    static byte[] read(HttpURLConnection connection) throws IOException {
         InputStream in = connection.getResponseCode() < 400 ? connection.getInputStream() : connection.getErrorStream();
         if (in == null) return new byte[0];
         try (InputStream stream = in) {

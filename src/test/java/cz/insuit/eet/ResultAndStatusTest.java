@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** What the records and sealed types gave for free: equals, hashCode, toString, and a check of every case. */
 class ResultAndStatusTest {
@@ -66,5 +69,37 @@ class ResultAndStatusTest {
         assertEquals(
                 "Exchange[messageId=" + EXCHANGE.messageId() + ", transactionId=null, request=0 chars, response=none]",
                 EXCHANGE.toString());
+    }
+
+    @Test
+    void textFromTheWireStaysOnOneLogLine() {
+        Result.Exchange exchange = new Result.Exchange(EXCHANGE.messageId(), "", null, "id\r\nforged");
+        Result rejected = new Result.Rejected(
+                8, "x\nforged", Collections.singletonList(new Result.Warning(6, "y\tforged")), exchange);
+        assertEquals(
+                "Rejected[code=8, message=x\\u000aforged, warnings=[Warning[code=6, message=y\\u0009forged]],"
+                        + " exchange=Exchange[messageId=" + EXCHANGE.messageId()
+                        + ", transactionId=id\\u000d\\u000aforged, request=0 chars, response=none]]",
+                rejected.toString());
+    }
+
+    @ParameterizedTest
+    // LF, CR, ESC, NEL, the line and paragraph separators, a right-to-left override, a zero-width space, a BOM, and the
+    // backslash, so a message holding the six characters of an escaped newline does not log as one
+    @ValueSource(ints = {0x0a, 0x0d, 0x1b, 0x85, 0x2028, 0x2029, 0x202e, 0x200b, 0xfeff, 0x5c})
+    void aCharacterThatCouldForgeHideOrReorderALogLinePrintsEscaped(int c) {
+        String text = "a" + (char) c + "b";
+        String escaped = String.format(Locale.ROOT, "a\\u%04xb", c);
+        assertEquals("Rejected[reason=" + escaped + "]", new Status.Rejected(text).toString());
+        assertEquals(
+                "Uncertain[reason=TIMEOUT, detail=" + escaped + ", exchange=" + EXCHANGE + "]",
+                new Result.Uncertain(Result.Reason.TIMEOUT, text, EXCHANGE).toString());
+    }
+
+    @Test
+    void aFormatCharacterOutsideTheBasicPlanePrintsAsItsTwoHalves() {
+        // U+E0001, a tag character: invisible, so it could carry text nobody sees in the log.
+        String tag = new String(Character.toChars(0xe0001));
+        assertEquals("Rejected[reason=\\udb40\\udc01]", new Status.Rejected(tag).toString());
     }
 }

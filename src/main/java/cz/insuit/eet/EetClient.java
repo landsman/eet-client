@@ -86,14 +86,16 @@ public final class EetClient implements AutoCloseable {
         String sent = new String(request, StandardCharsets.UTF_8);
         int status;
         byte[] body;
-        @Nullable String transactionId;
+        // Read as soon as the headers are in, so an answer whose body times out still names it for support. Never in
+        // a catch: after a connect timeout, getHeaderField would connect again.
+        @Nullable String transactionId = null;
         try {
             HttpURLConnection http = Http.open(endpoint, "POST", timeout);
             http.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
             http.setRequestProperty("SOAPAction", Soap.SOAP_ACTION);
-            body = Http.exchange(http, request);
-            status = http.getResponseCode();
+            status = Http.send(http, request);
             transactionId = http.getHeaderField("X-Global-Transaction-Id");
+            body = Http.read(http);
         } catch (SocketTimeoutException e) {
             // "connect timed out" means nothing was sent, "Read timed out" that the sale may be registered.
             return uncertain(
@@ -102,9 +104,9 @@ public final class EetClient implements AutoCloseable {
                     submission,
                     sent,
                     null,
-                    null);
+                    transactionId);
         } catch (IOException e) {
-            return uncertain(Result.Reason.NETWORK, String.valueOf(e), submission, sent, null, null);
+            return uncertain(Result.Reason.NETWORK, String.valueOf(e), submission, sent, null, transactionId);
         }
         String received = new String(body, StandardCharsets.UTF_8);
         Result.Exchange exchange = new Result.Exchange(submission.messageId(), sent, received, transactionId);

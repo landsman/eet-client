@@ -268,7 +268,7 @@ public abstract class Result extends Value {
         /** The ids and the bodies' lengths, so a log line stays findable; the bodies are one accessor away. */
         @Override
         public String toString() {
-            return "Exchange[messageId=" + messageId + ", transactionId=" + transactionId + ", request="
+            return "Exchange[messageId=" + messageId + ", transactionId=" + loggable(transactionId) + ", request="
                     + request.length() + " chars, response="
                     + (response == null ? "none" : response.length() + " chars")
                     + "]";

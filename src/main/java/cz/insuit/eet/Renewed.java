@@ -48,6 +48,7 @@ public final class Renewed {
 
     @Override
     public String toString() {
-        return "Renewed[serialNumber=" + serialNumber + ", validTo=" + validTo + "]";
+        // sn is whatever string the CA sent.
+        return "Renewed[serialNumber=" + Value.loggable(serialNumber) + ", validTo=" + validTo + "]";
     }
 }

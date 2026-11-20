@@ -1,10 +1,13 @@
 package cz.insuit.eet;
 
 import java.util.Arrays;
+import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What a record would give for free on Java 16+: equals, hashCode and toString over the fields a class lists.
+ * What a record would give for free on Java 16+: equals, hashCode and toString over the fields a class lists. Except
+ * that toString escapes text with {@link #loggable(String)}, which a record's does not: a class turned into a record
+ * keeps a toString of its own, or its log lines can be forged again.
  *
  * <p>The three are not final, so javac copies each into every public subclass: a method this package-private class
  * declares cannot be called by reflection from outside the package, as EL, SpEL, Groovy and Kotlin reflection do.
@@ -31,8 +34,36 @@ abstract class Value {
         @Nullable Object[] fields = fields();
         StringBuilder s = new StringBuilder(getClass().getSimpleName()).append('[');
         for (int i = 0; i < fields.length; i += 2) {
-            s.append(i == 0 ? "" : ", ").append(fields[i]).append('=').append(fields[i + 1]);
+            @Nullable Object value = fields[i + 1];
+            // Only text is escaped, here at the leaf: a nested Value or a list of them has escaped its own, and a
+            // second pass would escape the backslashes of the first.
+            s.append(i == 0 ? "" : ", ")
+                    .append(fields[i])
+                    .append('=')
+                    .append(value instanceof String ? loggable((String) value) : String.valueOf(value));
         }
         return s.append(']').toString();
+    }
+
+    /**
+     * {@code text} with every character escaped that could start a log line, hide or reorder part of one, or pass for
+     * an escape: controls, line and paragraph separators, format characters such as bidi overrides and zero-width
+     * ones, and the backslash. A message or a header from the wire then shows on one line, as it came.
+     */
+    static String loggable(@Nullable String text) {
+        StringBuilder s = new StringBuilder();
+        String.valueOf(text).codePoints().forEach(c -> {
+            int type = Character.getType(c);
+            if (c == '\\'
+                    || type == Character.CONTROL
+                    || type == Character.FORMAT
+                    || type == Character.LINE_SEPARATOR
+                    || type == Character.PARAGRAPH_SEPARATOR) {
+                for (char unit : Character.toChars(c)) s.append(String.format(Locale.ROOT, "\\u%04x", (int) unit));
+            } else {
+                s.appendCodePoint(c);
+            }
+        });
+        return s.toString();
     }
 }

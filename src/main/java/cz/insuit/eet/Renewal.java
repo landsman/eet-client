@@ -101,7 +101,7 @@ public final class Renewal implements AutoCloseable {
             case "REJECTED":
                 return new Status.Rejected(string(body, "rejectedReason"));
             default:
-                throw new IOException("unknown state " + state);
+                throw new IOException("unknown state " + Value.loggable(state));
         }
     }
 
