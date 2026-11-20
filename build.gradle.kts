@@ -5,7 +5,7 @@ plugins {
     `java-library`
     `maven-publish`
     id("com.diffplug.spotless") version "8.11.0"
-    id("com.autonomousapps.dependency-analysis") version "3.20.1"
+    id("com.autonomousapps.dependency-analysis") version "3.20.2"
     id("net.ltgt.errorprone") version "5.2.0"
 }
 
@@ -62,7 +62,7 @@ dependencies {
     // SOAP, XML signatures, PKCS#12 and HTTP come with the JDK; JSON, for the CA's renewal API, does not. Only the
     // streaming core, so a caller on Jackson 3 or none gets one small jar and no ObjectMapper of ours.
     api("org.jspecify:jspecify:1.0.1")
-    implementation("com.fasterxml.jackson.core:jackson-core:2.22.4")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.23.0")
 
     // JUnit 6 needs Java 17, and the tests run on 8.
     testImplementation(platform("org.junit:junit-bom:5.14.4"))
