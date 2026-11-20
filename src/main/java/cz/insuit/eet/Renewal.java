@@ -30,14 +30,13 @@ import org.jspecify.annotations.Nullable;
  * certificate being renewed. Thread-safe.
  *
  * <pre>{@code
- * try (Renewal renewal = Renewal.of(Server.PRODUCTION, signer)) {
- *     UUID id = renewal.request();
- *     // later, until it is no longer InProcess:
- *     if (renewal.status(id) instanceof Status.Issued) {
- *         Renewed renewed = renewal.claim(id);
- *         // store renewed.pkcs12() and renewed.password() first, then:
- *         renewal.acknowledge(id);
- *     }
+ * Renewal renewal = Renewal.of(Server.PRODUCTION, signer);
+ * UUID id = renewal.request();
+ * // later, until it is no longer InProcess:
+ * if (renewal.status(id) instanceof Status.Issued) {
+ *     Renewed renewed = renewal.claim(id);
+ *     // store renewed.pkcs12() and renewed.password() first, then:
+ *     renewal.acknowledge(id);
  * }
  * }</pre>
  *
