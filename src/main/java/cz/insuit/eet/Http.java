@@ -6,7 +6,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -15,11 +20,23 @@ import org.jspecify.annotations.Nullable;
  */
 final class Http {
 
+    // One instance: the JDK keeps an idle HTTPS connection for reuse only under the same factory.
+    private static final SSLSocketFactory TLS = defaultTls();
+    // The JDK checks the name against the certificate first and asks a verifier only when that failed.
+    private static final HostnameVerifier NO_EXCEPTIONS = (host, session) -> false;
+
     private Http() {}
 
     /** A connection that gives up connecting, and then waiting on each read, after {@code timeout}. */
     static HttpURLConnection open(URI uri, String method, Duration timeout) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
+        if (connection instanceof HttpsURLConnection) {
+            // Not HttpsURLConnection's JVM-wide defaults, which a host app may have set to trust anything for some
+            // other integration. HttpClient ignored them too.
+            HttpsURLConnection https = (HttpsURLConnection) connection;
+            https.setSSLSocketFactory(TLS);
+            https.setHostnameVerifier(NO_EXCEPTIONS);
+        }
         connection.setRequestMethod(method);
         // A redirect is an unexpected answer, not somewhere to send a signed request or a token.
         connection.setInstanceFollowRedirects(false);
@@ -49,6 +66,14 @@ final class Http {
             byte[] buffer = new byte[8192];
             for (int n; (n = stream.read(buffer)) != -1; ) out.write(buffer, 0, n);
             return out.toByteArray();
+        }
+    }
+
+    private static SSLSocketFactory defaultTls() {
+        try {
+            return SSLContext.getDefault().getSocketFactory();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("this JVM has no default TLS context", e);
         }
     }
 }
