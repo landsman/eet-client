@@ -8,10 +8,13 @@ import org.jspecify.annotations.Nullable;
  * How a renewal request stands: {@link InProcess}, {@link Issued}, {@link Delivering}, {@link Finished} or {@link
  * Rejected}, and nothing else.
  */
-public interface Status {
+public abstract class Status extends Value {
+
+    // Only this package can add a state, as with Result.
+    Status() {}
 
     /** As {@link Result#match}: one function per state, so none can be forgotten. */
-    default <T extends @Nullable Object> T match(
+    public final <T extends @Nullable Object> T match(
             Function<? super InProcess, ? extends T> inProcess,
             Function<? super Issued, ? extends T> issued,
             Function<? super Delivering, ? extends T> delivering,
@@ -25,7 +28,7 @@ public interface Status {
     }
 
     /** Not issued yet; ask again after {@code pollAfter}. */
-    final class InProcess extends Value implements Status {
+    public static final class InProcess extends Status {
         private final Duration pollAfter;
 
         public InProcess(Duration pollAfter) {
@@ -43,7 +46,7 @@ public interface Status {
     }
 
     /** Issued and ready for {@link Renewal#claim}. */
-    final class Issued extends Value implements Status {
+    public static final class Issued extends Status {
         @Override
         Object[] fields() {
             return new Object[0];
@@ -51,7 +54,7 @@ public interface Status {
     }
 
     /** Claimed but not acknowledged; {@link Renewal#claim} returns it again until {@link Renewal#acknowledge}. */
-    final class Delivering extends Value implements Status {
+    public static final class Delivering extends Status {
         @Override
         Object[] fields() {
             return new Object[0];
@@ -59,7 +62,7 @@ public interface Status {
     }
 
     /** Acknowledged, or not claimed within 30 days of issue: nothing more can be downloaded. */
-    final class Finished extends Value implements Status {
+    public static final class Finished extends Status {
         @Override
         Object[] fields() {
             return new Object[0];
@@ -67,7 +70,7 @@ public interface Status {
     }
 
     /** Refused by the CA, with its reason. */
-    final class Rejected extends Value implements Status {
+    public static final class Rejected extends Status {
         private final String reason;
 
         public Rejected(String reason) {

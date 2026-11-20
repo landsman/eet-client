@@ -10,17 +10,21 @@ import org.jspecify.annotations.Nullable;
  * and nothing else. Store it whole, the {@link #exchange()} included: the signed request and the response are the
  * evidence that the sale was registered.
  */
-public interface Result {
+public abstract class Result extends Value {
+
+    // Package-private, so only this package can add a kind: on Java 8, what a sealed type does on 17. A switch still
+    // needs a default, match does not.
+    Result() {}
 
     /** The message as sent and the answer as received. */
-    Exchange exchange();
+    public abstract Exchange exchange();
 
     /**
      * Hands this result to the function for its kind and returns what that one returns. Every kind needs a function,
      * so none can be forgotten, and a kind added later breaks the build instead of slipping past: what a {@code
      * switch} over a sealed type checks on Java 17 and later.
      */
-    default <T extends @Nullable Object> T match(
+    public final <T extends @Nullable Object> T match(
             Function<? super Accepted, ? extends T> accepted,
             Function<? super Verified, ? extends T> verified,
             Function<? super Rejected, ? extends T> rejected,
@@ -35,7 +39,7 @@ public interface Result {
      * The sale is registered. Every accepted attempt gets its own POK, a resend of an already accepted sale
      * included, so keep each one rather than one per sale.
      */
-    final class Accepted extends Value implements Result {
+    public static final class Accepted extends Result {
         private final String pok;
         private final boolean test;
         private final List<Warning> warnings;
@@ -74,7 +78,7 @@ public interface Result {
     }
 
     /** A {@linkplain Submission#verification(Sale) dry run} passed. Nothing was registered. */
-    final class Verified extends Value implements Result {
+    public static final class Verified extends Result {
         private final List<Warning> warnings;
         private final Exchange exchange;
 
@@ -104,7 +108,7 @@ public interface Result {
      * <p>Code 8, "a technical error or an error in the data", is the exception the interface leaves open: it may
      * pass on a later attempt.
      */
-    final class Rejected extends Value implements Result {
+    public static final class Rejected extends Result {
         private final int code;
         private final String message;
         private final List<Warning> warnings;
@@ -145,7 +149,7 @@ public interface Result {
      * Nobody knows whether the sale is registered. Send it again with {@link Submission#resend()}: the service
      * recognises the same sale, so a resend never registers it twice.
      */
-    final class Uncertain extends Value implements Result {
+    public static final class Uncertain extends Result {
         private final Reason reason;
         private final String detail;
         private final Exchange exchange;
@@ -176,7 +180,7 @@ public interface Result {
     }
 
     /** Why a result is {@link Uncertain}. */
-    enum Reason {
+    public enum Reason {
         /** No answer within the timeout. */
         TIMEOUT,
         /** The connection failed, or the client was closed. */
@@ -196,7 +200,7 @@ public interface Result {
     }
 
     /** A warning the service attached; the sale is registered regardless. */
-    final class Warning extends Value {
+    public static final class Warning extends Value {
         private final int code;
         private final String message;
 
@@ -220,7 +224,7 @@ public interface Result {
     }
 
     /** One attempt on the wire. */
-    final class Exchange extends Value {
+    public static final class Exchange extends Value {
         private final UUID messageId;
         private final String request;
         private final @Nullable String response;
