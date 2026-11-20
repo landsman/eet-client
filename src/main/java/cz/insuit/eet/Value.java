@@ -38,20 +38,24 @@ abstract class Value {
     }
 
     /**
-     * {@code value} as text with its control characters and line separators escaped, so a message or a header from
-     * the wire cannot start a log line of its own. Escaping twice changes nothing, so a nested value is safe too.
+     * {@code value} as text with every character escaped that could start a log line, or hide or reorder part of one:
+     * controls, line and paragraph separators, and format characters such as bidi overrides and zero-width ones. A
+     * message or a header from the wire then shows on one line, as it came. Escaping twice changes nothing, so a
+     * nested value is safe too.
      */
     static String loggable(@Nullable Object value) {
-        String text = String.valueOf(value);
-        StringBuilder s = new StringBuilder(text.length());
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (Character.isISOControl(c) || c == ' ' || c == ' ') {
-                s.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+        StringBuilder s = new StringBuilder();
+        String.valueOf(value).codePoints().forEach(c -> {
+            int type = Character.getType(c);
+            if (type == Character.CONTROL
+                    || type == Character.FORMAT
+                    || type == Character.LINE_SEPARATOR
+                    || type == Character.PARAGRAPH_SEPARATOR) {
+                for (char unit : Character.toChars(c)) s.append(String.format(Locale.ROOT, "\\u%04x", (int) unit));
             } else {
-                s.append(c);
+                s.appendCodePoint(c);
             }
-        }
+        });
         return s.toString();
     }
 }
