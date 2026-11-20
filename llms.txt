@@ -39,6 +39,8 @@ Mistakes to avoid:
 - Renewal is `Renewal.of(Server.PRODUCTION, signer)`: `request()`, then `status(id)` from a job, `claim(id)`,
   store the file and password, and only then `acknowledge(id)`. Only a still valid certificate renews; the playground
   has no CA.
+- Log `result.toString()`, never `exchange().request()` or `response()`: it carries the `messageId` and
+  `transactionId` the tax office's support asks for, without the bodies, which go to the database.
 - Revocation of the answer's certificate is not checked, so reading an answer makes no network call.
 
 ## Docs

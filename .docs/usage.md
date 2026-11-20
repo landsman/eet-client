@@ -54,3 +54,13 @@ merchants at once, raise it, or every send past the fifth at a time opens a conn
 as the JDK does by default. The timeout covers connecting and then each read, not the name lookup. An interrupt does
 not stop a send on a platform thread, which waits out its timeouts; on a virtual thread it closes the socket, and the
 send comes back `Uncertain` with `Reason.NETWORK`.
+
+## Logging, and what support asks for
+
+The client logs nothing. Log `result.toString()`: the kind, the code or reason with the tax office's text, and the
+exchange's two ids, without the bodies, which run to kilobytes and belong in the database with the result. Control
+characters in it are escaped, so an answer cannot start a log line of its own.
+
+The two ids are what to give the tax office about one attempt: `messageId`, the `uuid_zpravy` that was sent, and
+`transactionId`, the `X-Global-Transaction-Id` the service answered with, which its documentation names as the
+handle for support. An attempt that got no answer, a timeout or a failed connection, has only the `messageId`.
