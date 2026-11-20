@@ -1,8 +1,6 @@
 package cz.insuit.eet;
 
-import java.util.Objects;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 
 /**
  * One attempt to register a {@link Sale}: the sale and the header that goes with this attempt.
@@ -10,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  * <p>The send time is not here: {@link EetClient#send} stamps it when the message leaves, because the interface
  * wants the real time of sending and a submission may wait in a queue first.
  */
-public final class Submission {
+public final class Submission extends Value {
     private final UUID messageId;
     private final boolean firstAttempt;
     private final boolean verification;
@@ -63,23 +61,9 @@ public final class Submission {
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
-        if (!(o instanceof Submission)) return false;
-        Submission that = (Submission) o;
-        return messageId.equals(that.messageId)
-                && firstAttempt == that.firstAttempt
-                && verification == that.verification
-                && sale.equals(that.sale);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(messageId, firstAttempt, verification, sale);
-    }
-
-    @Override
-    public String toString() {
-        return "Submission[messageId=" + messageId + ", firstAttempt=" + firstAttempt + ", verification=" + verification
-                + ", sale=" + sale + "]";
+    Object[] fields() {
+        return new Object[] {
+            "messageId", messageId, "firstAttempt", firstAttempt, "verification", verification, "sale", sale
+        };
     }
 }

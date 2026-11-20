@@ -1,7 +1,6 @@
 package cz.insuit.eet;
 
 import java.time.Duration;
-import org.jspecify.annotations.Nullable;
 
 /**
  * How a renewal request stands: {@link InProcess}, {@link Issued}, {@link Delivering}, {@link Finished} or {@link
@@ -9,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  */
 public interface Status {
     /** Not issued yet; ask again after {@code pollAfter}. */
-    final class InProcess implements Status {
+    final class InProcess extends Value implements Status {
         private final Duration pollAfter;
 
         public InProcess(Duration pollAfter) {
@@ -21,77 +20,37 @@ public interface Status {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            return o instanceof InProcess && pollAfter.equals(((InProcess) o).pollAfter);
-        }
-
-        @Override
-        public int hashCode() {
-            return pollAfter.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "InProcess[pollAfter=" + pollAfter + "]";
+        Object[] fields() {
+            return new Object[] {"pollAfter", pollAfter};
         }
     }
 
     /** Issued and ready for {@link Renewal#claim}. */
-    final class Issued implements Status {
+    final class Issued extends Value implements Status {
         @Override
-        public boolean equals(@Nullable Object o) {
-            return o instanceof Issued;
-        }
-
-        @Override
-        public int hashCode() {
-            return Issued.class.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Issued[]";
+        Object[] fields() {
+            return new Object[0];
         }
     }
 
     /** Claimed but not acknowledged; {@link Renewal#claim} returns it again until {@link Renewal#acknowledge}. */
-    final class Delivering implements Status {
+    final class Delivering extends Value implements Status {
         @Override
-        public boolean equals(@Nullable Object o) {
-            return o instanceof Delivering;
-        }
-
-        @Override
-        public int hashCode() {
-            return Delivering.class.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Delivering[]";
+        Object[] fields() {
+            return new Object[0];
         }
     }
 
     /** Acknowledged, or not claimed within 30 days of issue: nothing more can be downloaded. */
-    final class Finished implements Status {
+    final class Finished extends Value implements Status {
         @Override
-        public boolean equals(@Nullable Object o) {
-            return o instanceof Finished;
-        }
-
-        @Override
-        public int hashCode() {
-            return Finished.class.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Finished[]";
+        Object[] fields() {
+            return new Object[0];
         }
     }
 
     /** Refused by the CA, with its reason. */
-    final class Rejected implements Status {
+    final class Rejected extends Value implements Status {
         private final String reason;
 
         public Rejected(String reason) {
@@ -103,18 +62,8 @@ public interface Status {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            return o instanceof Rejected && reason.equals(((Rejected) o).reason);
-        }
-
-        @Override
-        public int hashCode() {
-            return reason.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Rejected[reason=" + reason + "]";
+        Object[] fields() {
+            return new Object[] {"reason", reason};
         }
     }
 }

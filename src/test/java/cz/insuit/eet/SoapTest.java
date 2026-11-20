@@ -102,27 +102,27 @@ class SoapTest {
     @Test
     void readsARecordedConfirmationAndTrustsItsSigner() throws Exception {
         Soap.Response response = Soap.parse(recorded("accepted-response.xml"));
-        assertEquals("62ebb536-7dec-47a9-8786-986a62bcf140-ff", response.pok());
-        assertEquals("90a4595c-288d-401d-bc20-08c8bcf1ed96", response.messageId());
-        assertTrue(response.test());
-        assertNull(verify(response.document(), "NTRCZ-72080043"));
+        assertEquals("62ebb536-7dec-47a9-8786-986a62bcf140-ff", response.pok);
+        assertEquals("90a4595c-288d-401d-bc20-08c8bcf1ed96", response.messageId);
+        assertTrue(response.test);
+        assertNull(verify(response.document, "NTRCZ-72080043"));
     }
 
     @Test
     void readsAWarning() throws Exception {
         Soap.Response response = Soap.parse(recorded("warning-response.xml"));
-        assertNotNull(response.pok());
+        assertNotNull(response.pok);
         assertEquals(
                 Collections.singletonList(
                         new Result.Warning(6, "id_jednotky neodpovida formatem pridelenemu c. evidencni jednotky")),
-                response.warnings());
+                response.warnings);
     }
 
     @Test
     void readsAnError() throws Exception {
         Soap.Response response = Soap.parse(recorded("verified-response.xml"));
-        assertNull(response.pok());
-        assertEquals(0, response.errorCode());
+        assertNull(response.pok);
+        assertEquals(0, response.errorCode);
     }
 
     @Test
@@ -130,20 +130,20 @@ class SoapTest {
         String xml = new String(recorded("accepted-response.xml"), StandardCharsets.UTF_8);
         Document doc = Soap.parse(
                         xml.replace("-986a62bcf140-ff", "-986a62bcf141-ff").getBytes(StandardCharsets.UTF_8))
-                .document();
+                .document;
         assertEquals("the signature does not match the Body", verify(doc, "NTRCZ-72080043"));
     }
 
     @Test
     void refusesAConfirmationFromSomebodyElse() throws Exception {
-        Document doc = Soap.parse(recorded("accepted-response.xml")).document();
+        Document doc = Soap.parse(recorded("accepted-response.xml")).document;
         String problem = Objects.requireNonNull(verify(doc, "NTRCZ-00000000"));
         assertTrue(problem.startsWith("the signing certificate belongs to NTRCZ-72080043"), problem);
     }
 
     @Test
     void refusesAConfirmationOutsideItsCertificatesValidity() throws Exception {
-        Document doc = Soap.parse(recorded("accepted-response.xml")).document();
+        Document doc = Soap.parse(recorded("accepted-response.xml")).document;
         String problem = Soap.verify(
                 doc,
                 ica("ica-root-rsa-2022.pem"),

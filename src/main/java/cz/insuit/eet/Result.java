@@ -1,7 +1,6 @@
 package cz.insuit.eet;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -19,7 +18,7 @@ public interface Result {
      * The sale is registered. Every accepted attempt gets its own POK, a resend of an already accepted sale
      * included, so keep each one rather than one per sale.
      */
-    final class Accepted implements Result {
+    final class Accepted extends Value implements Result {
         private final String pok;
         private final boolean test;
         private final List<Warning> warnings;
@@ -52,28 +51,13 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Accepted)) return false;
-            Accepted that = (Accepted) o;
-            return pok.equals(that.pok)
-                    && test == that.test
-                    && warnings.equals(that.warnings)
-                    && exchange.equals(that.exchange);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(pok, test, warnings, exchange);
-        }
-
-        @Override
-        public String toString() {
-            return "Accepted[pok=" + pok + ", test=" + test + ", warnings=" + warnings + ", exchange=" + exchange + "]";
+        Object[] fields() {
+            return new Object[] {"pok", pok, "test", test, "warnings", warnings, "exchange", exchange};
         }
     }
 
     /** A {@linkplain Submission#verification(Sale) dry run} passed. Nothing was registered. */
-    final class Verified implements Result {
+    final class Verified extends Value implements Result {
         private final List<Warning> warnings;
         private final Exchange exchange;
 
@@ -92,20 +76,8 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Verified)) return false;
-            Verified that = (Verified) o;
-            return warnings.equals(that.warnings) && exchange.equals(that.exchange);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(warnings, exchange);
-        }
-
-        @Override
-        public String toString() {
-            return "Verified[warnings=" + warnings + ", exchange=" + exchange + "]";
+        Object[] fields() {
+            return new Object[] {"warnings", warnings, "exchange", exchange};
         }
     }
 
@@ -115,7 +87,7 @@ public interface Result {
      * <p>Code 8, "a technical error or an error in the data", is the exception the interface leaves open: it may
      * pass on a later attempt.
      */
-    final class Rejected implements Result {
+    final class Rejected extends Value implements Result {
         private final int code;
         private final String message;
         private final List<Warning> warnings;
@@ -147,24 +119,8 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Rejected)) return false;
-            Rejected that = (Rejected) o;
-            return code == that.code
-                    && message.equals(that.message)
-                    && warnings.equals(that.warnings)
-                    && exchange.equals(that.exchange);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(code, message, warnings, exchange);
-        }
-
-        @Override
-        public String toString() {
-            return "Rejected[code=" + code + ", message=" + message + ", warnings=" + warnings + ", exchange="
-                    + exchange + "]";
+        Object[] fields() {
+            return new Object[] {"code", code, "message", message, "warnings", warnings, "exchange", exchange};
         }
     }
 
@@ -172,7 +128,7 @@ public interface Result {
      * Nobody knows whether the sale is registered. Send it again with {@link Submission#resend()}: the service
      * recognises the same sale, so a resend never registers it twice.
      */
-    final class Uncertain implements Result {
+    final class Uncertain extends Value implements Result {
         private final Reason reason;
         private final String detail;
         private final Exchange exchange;
@@ -197,20 +153,8 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Uncertain)) return false;
-            Uncertain that = (Uncertain) o;
-            return reason == that.reason && detail.equals(that.detail) && exchange.equals(that.exchange);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(reason, detail, exchange);
-        }
-
-        @Override
-        public String toString() {
-            return "Uncertain[reason=" + reason + ", detail=" + detail + ", exchange=" + exchange + "]";
+        Object[] fields() {
+            return new Object[] {"reason", reason, "detail", detail, "exchange", exchange};
         }
     }
 
@@ -235,7 +179,7 @@ public interface Result {
     }
 
     /** A warning the service attached; the sale is registered regardless. */
-    final class Warning {
+    final class Warning extends Value {
         private final int code;
         private final String message;
 
@@ -253,25 +197,13 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Warning)) return false;
-            Warning that = (Warning) o;
-            return code == that.code && message.equals(that.message);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(code, message);
-        }
-
-        @Override
-        public String toString() {
-            return "Warning[code=" + code + ", message=" + message + "]";
+        Object[] fields() {
+            return new Object[] {"code", code, "message", message};
         }
     }
 
     /** One attempt on the wire. */
-    final class Exchange {
+    final class Exchange extends Value {
         private final UUID messageId;
         private final String request;
         private final @Nullable String response;
@@ -305,24 +237,11 @@ public interface Result {
         }
 
         @Override
-        public boolean equals(@Nullable Object o) {
-            if (!(o instanceof Exchange)) return false;
-            Exchange that = (Exchange) o;
-            return messageId.equals(that.messageId)
-                    && request.equals(that.request)
-                    && Objects.equals(response, that.response)
-                    && Objects.equals(transactionId, that.transactionId);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(messageId, request, response, transactionId);
-        }
-
-        @Override
-        public String toString() {
-            return "Exchange[messageId=" + messageId + ", request=" + request + ", response=" + response
-                    + ", transactionId=" + transactionId + "]";
+        @Nullable
+        Object[] fields() {
+            return new @Nullable Object[] {
+                "messageId", messageId, "request", request, "response", response, "transactionId", transactionId
+            };
         }
     }
 }

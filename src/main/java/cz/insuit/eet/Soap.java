@@ -177,13 +177,13 @@ final class Soap {
 
     /** A response as parsed: exactly one of {@code pok} and {@code errorCode} is set. */
     static final class Response {
-        private final @Nullable String messageId;
-        private final @Nullable String pok;
-        private final boolean test;
-        private final @Nullable Integer errorCode;
-        private final String errorText;
-        private final List<Result.Warning> warnings;
-        private final Document document;
+        final @Nullable String messageId;
+        final @Nullable String pok;
+        final boolean test;
+        final @Nullable Integer errorCode;
+        final String errorText;
+        final List<Result.Warning> warnings;
+        final Document document;
 
         Response(
                 @Nullable String messageId,
@@ -200,37 +200,6 @@ final class Soap {
             this.errorText = errorText;
             this.warnings = warnings;
             this.document = document;
-        }
-
-        @Nullable
-        String messageId() {
-            return messageId;
-        }
-
-        @Nullable
-        String pok() {
-            return pok;
-        }
-
-        boolean test() {
-            return test;
-        }
-
-        @Nullable
-        Integer errorCode() {
-            return errorCode;
-        }
-
-        String errorText() {
-            return errorText;
-        }
-
-        List<Result.Warning> warnings() {
-            return warnings;
-        }
-
-        Document document() {
-            return document;
         }
     }
 

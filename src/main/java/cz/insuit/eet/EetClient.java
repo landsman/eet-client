@@ -113,29 +113,29 @@ public final class EetClient implements AutoCloseable {
                     Result.Reason.UNEXPECTED_RESPONSE, "HTTP " + status + ", " + e.getMessage(), exchange);
         }
         // A response without the id is allowed only for a message the service could not read at all.
-        String id = response.messageId();
+        String id = response.messageId;
         if (id != null && !id.equalsIgnoreCase(submission.messageId().toString())) {
             return new Result.Uncertain(Result.Reason.UNEXPECTED_RESPONSE, "an answer to message " + id, exchange);
         }
-        if (response.test() != (environment == Environment.PLAYGROUND)) {
+        if (response.test != (environment == Environment.PLAYGROUND)) {
             return new Result.Uncertain(
                     Result.Reason.UNEXPECTED_RESPONSE,
-                    "test=" + response.test() + " from " + environment + " at " + endpoint,
+                    "test=" + response.test + " from " + environment + " at " + endpoint,
                     exchange);
         }
-        String pok = response.pok();
+        String pok = response.pok;
         if (pok != null) {
             if (id == null) {
                 return new Result.Uncertain(Result.Reason.UNEXPECTED_RESPONSE, "a POK for no message id", exchange);
             }
-            String problem = Soap.verify(response.document(), anchors, intermediates, responseSigner, clock.instant());
+            String problem = Soap.verify(response.document, anchors, intermediates, responseSigner, clock.instant());
             if (problem != null) return new Result.Uncertain(Result.Reason.SIGNATURE, problem, exchange);
-            return new Result.Accepted(pok, response.test(), response.warnings(), exchange);
+            return new Result.Accepted(pok, response.test, response.warnings, exchange);
         }
-        int code = Objects.requireNonNull(response.errorCode());
-        if (code == 0) return new Result.Verified(response.warnings(), exchange);
-        if (code == -1) return new Result.Uncertain(Result.Reason.TEMPORARY, response.errorText(), exchange);
-        return new Result.Rejected(code, response.errorText(), response.warnings(), exchange);
+        int code = Objects.requireNonNull(response.errorCode);
+        if (code == 0) return new Result.Verified(response.warnings, exchange);
+        if (code == -1) return new Result.Uncertain(Result.Reason.TEMPORARY, response.errorText, exchange);
+        return new Result.Rejected(code, response.errorText, response.warnings, exchange);
     }
 
     /** Why the certificate cannot sign {@code sale} now, or null when it can. */

@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
  * 123.50 K&ccaron;. A refund or a storno is a negative {@code total}, sent as a sale of its own with its own sequence
  * number, and never refers to the original.
  */
-public final class Sale {
+public final class Sale extends Value {
 
     private static final Pattern EIC = Pattern.compile("CZ[0-9]{8,10}");
     private static final Pattern TEXT = Pattern.compile("[0-9a-zA-Z.,:;/#\\-_ ]+");
@@ -191,41 +191,30 @@ public final class Sale {
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
-        if (!(o instanceof Sale)) return false;
-        Sale that = (Sale) o;
-        return eic.equals(that.eic)
-                && unitId == that.unitId
-                && registerId.equals(that.registerId)
-                && sequenceNumber.equals(that.sequenceNumber)
-                && time.equals(that.time)
-                && total == that.total
-                && Objects.equals(delegatingEic, that.delegatingEic)
-                && delegatedByMany == that.delegatedByMany
-                && Objects.equals(forLaterDraw, that.forLaterDraw)
-                && Objects.equals(draw, that.draw);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(
-                eic,
-                unitId,
-                registerId,
-                sequenceNumber,
-                time,
-                total,
-                delegatingEic,
-                delegatedByMany,
-                forLaterDraw,
-                draw);
-    }
-
-    @Override
-    public String toString() {
-        return "Sale[eic=" + eic + ", unitId=" + unitId + ", registerId=" + registerId + ", sequenceNumber="
-                + sequenceNumber + ", time=" + time + ", total=" + total + ", delegatingEic=" + delegatingEic
-                + ", delegatedByMany=" + delegatedByMany + ", forLaterDraw=" + forLaterDraw + ", draw=" + draw + "]";
+    @Nullable
+    Object[] fields() {
+        return new @Nullable Object[] {
+            "eic",
+            eic,
+            "unitId",
+            unitId,
+            "registerId",
+            registerId,
+            "sequenceNumber",
+            sequenceNumber,
+            "time",
+            time,
+            "total",
+            total,
+            "delegatingEic",
+            delegatingEic,
+            "delegatedByMany",
+            delegatedByMany,
+            "forLaterDraw",
+            forLaterDraw,
+            "draw",
+            draw
+        };
     }
 
     /** An amount in hal&eacute;&rcaron;e as the schema writes it: {@code -5} is {@code -0.05}, never {@code -0.00}. */
