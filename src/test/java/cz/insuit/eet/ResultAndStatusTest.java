@@ -84,8 +84,9 @@ class ResultAndStatusTest {
     }
 
     @ParameterizedTest
-    // LF, CR, ESC, NEL, the line and paragraph separators, a right-to-left override, a zero-width space, a BOM
-    @ValueSource(ints = {0x0a, 0x0d, 0x1b, 0x85, 0x2028, 0x2029, 0x202e, 0x200b, 0xfeff})
+    // LF, CR, ESC, NEL, the line and paragraph separators, a right-to-left override, a zero-width space, a BOM, and the
+    // backslash, so a message holding the six characters of an escaped newline does not log as one
+    @ValueSource(ints = {0x0a, 0x0d, 0x1b, 0x85, 0x2028, 0x2029, 0x202e, 0x200b, 0xfeff, 0x5c})
     void aCharacterThatCouldForgeHideOrReorderALogLinePrintsEscaped(int c) {
         String text = "a" + (char) c + "b";
         String escaped = String.format(Locale.ROOT, "a\\u%04xb", c);
