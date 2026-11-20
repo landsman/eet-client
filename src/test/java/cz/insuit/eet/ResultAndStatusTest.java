@@ -67,4 +67,16 @@ class ResultAndStatusTest {
                 "Exchange[messageId=" + EXCHANGE.messageId() + ", transactionId=null, request=0 chars, response=none]",
                 EXCHANGE.toString());
     }
+
+    @Test
+    void textFromTheWireStaysOnOneLogLine() {
+        Result.Exchange exchange = new Result.Exchange(EXCHANGE.messageId(), "", null, "id\r\nforged");
+        Result rejected = new Result.Rejected(
+                8, "x\nforged", Collections.singletonList(new Result.Warning(6, "y forged")), exchange);
+        assertEquals(
+                "Rejected[code=8, message=x\\u000aforged, warnings=[Warning[code=6, message=y\\u2028forged]],"
+                        + " exchange=Exchange[messageId=" + EXCHANGE.messageId()
+                        + ", transactionId=id\\u000d\\u000aforged, request=0 chars, response=none]]",
+                rejected.toString());
+    }
 }

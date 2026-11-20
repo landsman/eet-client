@@ -1,6 +1,7 @@
 package cz.insuit.eet;
 
 import java.util.Arrays;
+import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -31,8 +32,26 @@ abstract class Value {
         @Nullable Object[] fields = fields();
         StringBuilder s = new StringBuilder(getClass().getSimpleName()).append('[');
         for (int i = 0; i < fields.length; i += 2) {
-            s.append(i == 0 ? "" : ", ").append(fields[i]).append('=').append(fields[i + 1]);
+            s.append(i == 0 ? "" : ", ").append(fields[i]).append('=').append(loggable(fields[i + 1]));
         }
         return s.append(']').toString();
+    }
+
+    /**
+     * {@code value} as text with its control characters and line separators escaped, so a message or a header from
+     * the wire cannot start a log line of its own. Escaping twice changes nothing, so a nested value is safe too.
+     */
+    static String loggable(@Nullable Object value) {
+        String text = String.valueOf(value);
+        StringBuilder s = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isISOControl(c) || c == ' ' || c == ' ') {
+                s.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+            } else {
+                s.append(c);
+            }
+        }
+        return s.toString();
     }
 }
