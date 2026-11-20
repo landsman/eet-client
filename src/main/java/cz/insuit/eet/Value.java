@@ -5,7 +5,9 @@ import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What a record would give for free on Java 16+: equals, hashCode and toString over the fields a class lists.
+ * What a record would give for free on Java 16+: equals, hashCode and toString over the fields a class lists. Except
+ * that toString escapes text with {@link #loggable(String)}, which a record's does not: a class turned into a record
+ * keeps a toString of its own, or its log lines can be forged again.
  *
  * <p>The three are not final, so javac copies each into every public subclass: a method this package-private class
  * declares cannot be called by reflection from outside the package, as EL, SpEL, Groovy and Kotlin reflection do.
