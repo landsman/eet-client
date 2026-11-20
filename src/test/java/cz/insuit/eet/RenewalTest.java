@@ -138,6 +138,17 @@ class RenewalTest {
     }
 
     @Test
+    void aSerialNumberFromTheCaCannotForgeALogLine() throws IOException {
+        answer(
+                200,
+                "{\"pkcs12\":\"AQID\",\"password\":\"x\",\"certificate\":{\"sn\":\"1\\nINFO forged\","
+                        + "\"validFrom\":\"2026-01-04 11:13:33+00:00\",\"validTo\":\"2027-01-04 11:13:33+00:00\"}}");
+        assertEquals(
+                "Renewed[serialNumber=1\\u000aINFO forged, validTo=2027-01-04T11:13:33Z]",
+                renewal.claim(ID).toString());
+    }
+
+    @Test
     void anAcknowledgementIsANoContent() throws IOException {
         answer(204, "");
         renewal.acknowledge(ID);
