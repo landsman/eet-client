@@ -34,6 +34,7 @@ class EetClientTest {
     private final AtomicReference<String> contentType = new AtomicReference<>();
     private int status = 200;
     private long delayMillis;
+    private long bodyDelayMillis;
 
     @BeforeEach
     void start() throws IOException {
@@ -43,14 +44,12 @@ class EetClientTest {
             contentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
             Matcher id = MESSAGE_ID.matcher(request);
             String body = answer.get().apply(request).replace("%ID%", id.find() ? id.group(1) : "");
-            try {
-                Thread.sleep(delayMillis);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            pause(delayMillis);
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("X-Global-Transaction-Id", "bc626a986ade2e8c00fe06e3");
             exchange.sendResponseHeaders(status, bytes.length);
+            exchange.getResponseBody().flush();
+            pause(bodyDelayMillis);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });
@@ -60,6 +59,14 @@ class EetClientTest {
     @AfterEach
     void stop() {
         server.stop(0);
+    }
+
+    private static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test
@@ -122,6 +129,15 @@ class EetClientTest {
         assertEquals(Result.Reason.TIMEOUT, result.reason());
         assertTrue(result.detail().endsWith("Read timed out"), result.detail());
         assertTrue(result.exchange().request().contains("prvni_zaslani=\"true\""));
+    }
+
+    @Test
+    void aBodyThatComesTooLateKeepsTheTransactionIdThatCameBeforeIt() throws Exception {
+        bodyDelayMillis = 2_500;
+        answer(odpoved("<eet:Chyba kod=\"0\" test=\"true\">late</eet:Chyba>"));
+        Result.Uncertain result = assertInstanceOf(Result.Uncertain.class, send(Submission.of(SoapTest.sale())));
+        assertEquals(Result.Reason.TIMEOUT, result.reason());
+        assertEquals("bc626a986ade2e8c00fe06e3", result.exchange().transactionId());
     }
 
     @Test
