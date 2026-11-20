@@ -5,16 +5,16 @@ nobody has to log in. The CA asks for it two to three weeks before
 expiry; an expired or revoked certificate can only be replaced by the taxpayer in MOJE daně.
 
 ```java
-try (Renewal renewal = Renewal.of(Server.PRODUCTION, signer)) {
-    UUID id = renewal.request();                              // store the id
-    switch (renewal.status(id)) {                             // ask again later, by a job
-        case Status.InProcess p -> retryAfter(p.pollAfter());
-        case Status.Issued i -> claim(renewal, id);
-        case Status.Delivering d -> claim(renewal, id);
-        case Status.Finished f -> {}
-        case Status.Rejected r -> alert(r.reason());
-    }
-}
+Renewal renewal = Renewal.of(Server.PRODUCTION, signer);
+UUID id = renewal.request();                                  // store the id
+Status status = renewal.status(id);                           // ask again later, by a job
+if (status instanceof Status.InProcess p) {
+    retryAfter(p.pollAfter());
+} else if (status instanceof Status.Issued || status instanceof Status.Delivering) {
+    claim(renewal, id);
+} else if (status instanceof Status.Rejected r) {
+    alert(r.reason());
+}                                                             // else Finished: nothing left to do
 
 void claim(Renewal renewal, UUID id) throws IOException {
     Renewed renewed = renewal.claim(id);
@@ -23,7 +23,9 @@ void claim(Renewal renewal, UUID id) throws IOException {
 }
 ```
 
-On Java 17, which has no `switch` over types, the `switch` is a chain of `instanceof`.
+`status.match(...)` takes one function per state, so none can be forgotten, as `Result.match` does; `Status` is not
+sealed, so a `switch` over it needs a `default`. `Renewal` holds nothing open; its `close()`
+is there for the try-with-resources an older version asked for.
 
 `claim` returns the same file again until `acknowledge`, so a crash between the two loses nothing; an issued
 certificate nobody claims is gone after 30 days. `notFinished()` finds a request whose id was lost. A non-success

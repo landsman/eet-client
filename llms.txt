@@ -1,8 +1,8 @@
 # eet-client
 
-> A Java 17+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
+> A Java 8+ and Kotlin client for EET 2.0, the Czech electronic sales registration that starts on 2027-01-01. It
 > builds the SOAP message, signs it with the taxpayer's certificate, sends it, checks the tax office's signature on
-> the answer and returns a sealed Result. Depends on the JDK, JSpecify and jackson-core (for the CA's renewal API). Published on GitHub Packages
+> the answer and returns a Result. Depends on the JDK, JSpecify and jackson-core (for the CA's renewal API). Published on GitHub Packages
 > (`cz.insuit:eet-client`), not Maven Central. Pre-1.0.
 
 Setting it up in a project:
@@ -18,14 +18,15 @@ Setting it up in a project:
 - `Sale.of(eic, unitId, registerId, sequenceNumber, time, total)`, optional parts through `with…` methods;
   `Submission.of(sale)`; `eet.send(submission)`.
 - `Result` is `Accepted` (pok, warnings), `Uncertain` (send again), `Rejected` (fix the message) or `Verified` (a
-  dry run passed). Switch over all four.
+  dry run passed). Handle all four with `result.match(accepted, verified, rejected, uncertain)`, one function each,
+  which the compiler checks; `Result` is not sealed, so a `switch` or a Kotlin `when` over it needs a `default` or
+  an `else` and checks nothing. `Status` has the same `match`.
 
 Mistakes to avoid:
 
 - `Uncertain` with `Reason.CERTIFICATE` means nothing was sent (expired certificate, or another taxpayer's): hold the
   sale and send it again after a new certificate, do not treat it as refused. Its exchange's request is empty.
 - A storno is `sale.storno(sequenceNumber, time)`, a new sale with negated amounts and its own sequence number.
-- `EetClient` holds an HTTP client: keep one per certificate and `close()` it when the certificate is replaced.
 - Amounts are haléře as `long`: 123.50 Kč is `12350`. A refund is a negative sale of its own.
 - The client never retries. Keep the queue in the database, in the same transaction as the sale, and send an
   `Uncertain` again with `submission.resend()`: a new message id, the same sale. Never build a new `Submission`

@@ -2,11 +2,9 @@ package cz.insuit.eet;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -19,11 +17,11 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Sends sales to EET 2.0 and tells what came of each one. Thread-safe; build one per signer, keep it, and close it
- * when the signer is replaced: it holds an HTTP client with a thread of its own.
+ * Sends sales to EET 2.0 and tells what came of each one. Thread-safe; build one per signer and keep it.
  *
  * <pre>{@code
  * EetClient eet = EetClient.builder(Environment.PRODUCTION, Signer.fromPkcs12(p12, password)).build();
@@ -45,7 +43,6 @@ public final class EetClient implements AutoCloseable {
     private final Signer signer;
     private final Duration timeout;
     private final Clock clock;
-    private final HttpClient http;
     private final List<X509Certificate> anchors;
     private final List<X509Certificate> intermediates;
     private final String responseSigner;
@@ -60,12 +57,6 @@ public final class EetClient implements AutoCloseable {
         anchors = b.anchors;
         intermediates = b.intermediates;
         responseSigner = b.responseSigner;
-        // HTTP/1.1 is what the interface requires. A new connection resolves the name again, which production's two
-        // data centres behind DNS rely on; a pooled one is closed by the JDK after its keep-alive.
-        http = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(timeout)
-                .build();
     }
 
     /** A builder for a client that sends to {@code environment}, signing with {@code signer}. */
@@ -73,28 +64,15 @@ public final class EetClient implements AutoCloseable {
         return new Builder(environment, signer);
     }
 
-    /** Releases the HTTP client. A send after this comes back uncertain, as a network failure. */
+    /** After this, a send sends nothing and comes back uncertain, as a network failure. */
     @Override
     public void close() {
         closed = true;
-        release(http);
-    }
-
-    // HttpClient is AutoCloseable from Java 21 on. On 17 it has no close(), its thread stops once the client is
-    // collected, so the flag above is what keeps a closed client from sending.
-    static void release(HttpClient http) {
-        if (http instanceof AutoCloseable closeable) {
-            try {
-                closeable.close();
-            } catch (Exception e) {
-                throw new IllegalStateException("cannot close the HTTP client", e);
-            }
-        }
     }
 
     /**
-     * Signs and sends one attempt, and waits for the answer at most the timeout. A sale this client's certificate
-     * cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
+     * Signs and sends one attempt, waiting at most the timeout to connect and then the timeout for each read of the
+     * answer. A sale this client's certificate cannot sign is not sent: {@link Result.Reason#CERTIFICATE}.
      */
     public Result send(Submission submission) {
         if (closed) {
@@ -106,29 +84,31 @@ public final class EetClient implements AutoCloseable {
         }
         byte[] request = Soap.request(submission, OffsetDateTime.now(clock), signer);
         String sent = new String(request, StandardCharsets.UTF_8);
-        HttpResponse<byte[]> response;
+        int status;
+        byte[] body;
+        @Nullable String transactionId;
         try {
-            response = http.send(
-                    HttpRequest.newBuilder(endpoint)
-                            .timeout(timeout)
-                            .header("Content-Type", "text/xml; charset=utf-8")
-                            .header("SOAPAction", Soap.SOAP_ACTION)
-                            .POST(HttpRequest.BodyPublishers.ofByteArray(request))
-                            .build(),
-                    HttpResponse.BodyHandlers.ofByteArray());
-        } catch (HttpTimeoutException e) {
-            return uncertain(Result.Reason.TIMEOUT, "no answer within " + timeout, submission, sent, null, null);
+            HttpURLConnection http = Http.open(endpoint, "POST", timeout);
+            http.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
+            http.setRequestProperty("SOAPAction", Soap.SOAP_ACTION);
+            body = Http.exchange(http, request);
+            status = http.getResponseCode();
+            transactionId = http.getHeaderField("X-Global-Transaction-Id");
+        } catch (SocketTimeoutException e) {
+            // "connect timed out" means nothing was sent, "Read timed out" that the sale may be registered.
+            return uncertain(
+                    Result.Reason.TIMEOUT,
+                    "no answer within " + timeout + ": " + e.getMessage(),
+                    submission,
+                    sent,
+                    null,
+                    null);
         } catch (IOException e) {
             return uncertain(Result.Reason.NETWORK, String.valueOf(e), submission, sent, null, null);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return uncertain(Result.Reason.NETWORK, "interrupted while waiting", submission, sent, null, null);
         }
-        String received = new String(response.body(), StandardCharsets.UTF_8);
-        String transactionId =
-                response.headers().firstValue("X-Global-Transaction-Id").orElse(null);
+        String received = new String(body, StandardCharsets.UTF_8);
         Result.Exchange exchange = new Result.Exchange(submission.messageId(), sent, received, transactionId);
-        return read(submission, response.statusCode(), response.body(), exchange);
+        return read(submission, status, body, exchange);
     }
 
     private Result read(Submission submission, int status, byte[] body, Result.Exchange exchange) {
@@ -140,31 +120,29 @@ public final class EetClient implements AutoCloseable {
                     Result.Reason.UNEXPECTED_RESPONSE, "HTTP " + status + ", " + e.getMessage(), exchange);
         }
         // A response without the id is allowed only for a message the service could not read at all.
-        String id = response.messageId();
+        String id = response.messageId;
         if (id != null && !id.equalsIgnoreCase(submission.messageId().toString())) {
             return new Result.Uncertain(Result.Reason.UNEXPECTED_RESPONSE, "an answer to message " + id, exchange);
         }
-        if (response.test() != (environment == Environment.PLAYGROUND)) {
+        if (response.test != (environment == Environment.PLAYGROUND)) {
             return new Result.Uncertain(
                     Result.Reason.UNEXPECTED_RESPONSE,
-                    "test=" + response.test() + " from " + environment + " at " + endpoint,
+                    "test=" + response.test + " from " + environment + " at " + endpoint,
                     exchange);
         }
-        String pok = response.pok();
+        String pok = response.pok;
         if (pok != null) {
             if (id == null) {
                 return new Result.Uncertain(Result.Reason.UNEXPECTED_RESPONSE, "a POK for no message id", exchange);
             }
-            String problem = Soap.verify(response.document(), anchors, intermediates, responseSigner, clock.instant());
+            String problem = Soap.verify(response.document, anchors, intermediates, responseSigner, clock.instant());
             if (problem != null) return new Result.Uncertain(Result.Reason.SIGNATURE, problem, exchange);
-            return new Result.Accepted(pok, response.test(), response.warnings(), exchange);
+            return new Result.Accepted(pok, response.test, response.warnings, exchange);
         }
-        int code = Objects.requireNonNull(response.errorCode());
-        return switch (code) {
-            case 0 -> new Result.Verified(response.warnings(), exchange);
-            case -1 -> new Result.Uncertain(Result.Reason.TEMPORARY, response.errorText(), exchange);
-            default -> new Result.Rejected(code, response.errorText(), response.warnings(), exchange);
-        };
+        int code = Objects.requireNonNull(response.errorCode);
+        if (code == 0) return new Result.Verified(response.warnings, exchange);
+        if (code == -1) return new Result.Uncertain(Result.Reason.TEMPORARY, response.errorText, exchange);
+        return new Result.Rejected(code, response.errorText, response.warnings, exchange);
     }
 
     /** Why the certificate cannot sign {@code sale} now, or null when it can. */
@@ -174,7 +152,7 @@ public final class EetClient implements AutoCloseable {
             return "the certificate expired on " + signer.notAfter();
         }
         Optional<String> eic = signer.eic();
-        if (eic.isEmpty()) {
+        if (!eic.isPresent()) {
             return "the certificate is not a cash register certificate: its CN is not an EIČ";
         }
         if (!eic.get().equals(sale.eic())) {
@@ -199,7 +177,7 @@ public final class EetClient implements AutoCloseable {
             if (in == null) throw new IllegalStateException("missing resource " + resource);
             return CertificateFactory.getInstance("X.509").generateCertificates(in).stream()
                     .map(X509Certificate.class::cast)
-                    .toList();
+                    .collect(Collectors.toList());
         } catch (IOException | CertificateException e) {
             throw new IllegalStateException("cannot read " + resource, e);
         }
@@ -230,8 +208,8 @@ public final class EetClient implements AutoCloseable {
         }
 
         /**
-         * How long to wait for an answer, two seconds by default. The act sets two seconds as the least, and asks for
-         * a value that does not hold up the sale.
+         * How long to wait to connect, and then for each read of the answer, two seconds by default; the name lookup is
+         * not covered. The act sets two seconds as the least, and asks for a value that does not hold up the sale.
          */
         public Builder timeout(Duration timeout) {
             if (timeout.compareTo(MINIMUM_TIMEOUT) < 0) {

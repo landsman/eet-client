@@ -9,7 +9,7 @@ plugins {
     id("net.ltgt.errorprone") version "5.2.0"
 }
 
-// Compiled once, for release 17, on whatever JDK runs Gradle; the tests run on the JDK -PtestsJdk names, so CI's
+// Compiled once, for Java 8, on whatever JDK runs Gradle; the tests run on the JDK -PtestsJdk names, so CI's
 // matrix checks the jar on each JDK it supports. Without it they run on Gradle's own.
 val testsJdk = providers.gradleProperty("testsJdk")
 
@@ -23,9 +23,12 @@ repositories {
     mavenCentral()
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    // Built on any current JDK, usable from Java 17.
-    options.release = 17
+// Built on any current JDK, usable from Java 8. As -source and -target, not --release 8: under release 8 javac warns
+// that jspecify's @NullMarked targets ElementType.MODULE, no flag silences it, and -Werror would fail every build.
+// checkJava8Api does what --release 8 would have, and the module metadata still tells Gradle callers 8.
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 tasks.withType<Test>().configureEach {
@@ -38,7 +41,8 @@ tasks.withType<Test>().configureEach {
 // What ships is held to the strictest checks: every warning fails, and the JSpecify annotations are enforced by
 // NullAway rather than left as documentation.
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:all,-serial,-processing", "-Werror"))
+    // -options: a current javac warns that source 8 is obsolete and that no Java 8 boot class path is set.
+    options.compilerArgs.addAll(listOf("-Xlint:all,-serial,-processing,-options", "-Werror"))
     options.errorprone {
         check("NullAway", CheckSeverity.ERROR)
         option("NullAway:JSpecifyMode", "true")
@@ -47,7 +51,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.withType<Javadoc>().configureEach {
-    // An @param per record component would only repeat its name; broken links still fail.
+    // A comment on every accessor would only repeat its name; broken links still fail.
     (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:all,-missing", "-quiet")
 }
 
@@ -60,7 +64,8 @@ dependencies {
     api("org.jspecify:jspecify:1.0.1")
     implementation("com.fasterxml.jackson.core:jackson-core:2.23.0")
 
-    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    // JUnit 6 needs Java 17, and the tests run on 8.
+    testImplementation(platform("org.junit:junit-bom:5.14.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -150,8 +155,25 @@ val verifyLocks =
         doLast {}
     }
 
+// The main code compiled once more with --release 8, which knows only the Java 8 API: a call 8 lacks fails here,
+// before a caller on 8 hits it as a NoSuchMethodError. No -Werror and no Error Prone, compileJava has both; this
+// one would fail on the MODULE warning above. It checks the source, not the bytecode that ships: compileJava links
+// against the JDK it runs on, so ByteBuffer.flip() and the other Buffer methods Java 9 made covariant compile to
+// signatures 8 lacks. Only the tests on JDK 8 catch that.
+val checkJava8Api =
+    tasks.register<JavaCompile>("checkJava8Api") {
+        description = "Fails when the main code uses an API Java 8 does not have."
+        group = "verification"
+        source = sourceSets.main.get().java
+        classpath = sourceSets.main.get().compileClasspath
+        destinationDirectory = layout.buildDirectory.dir("java8-api")
+        options.release = 8
+        options.compilerArgs = listOf("-Xlint:-options")
+        options.errorprone.enabled = false
+    }
+
 tasks.check {
-    dependsOn(verifyLocks)
+    dependsOn(verifyLocks, checkJava8Api)
 }
 
 dependencies {

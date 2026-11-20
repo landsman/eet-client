@@ -8,15 +8,17 @@ Sale sale = Sale.of("CZ00000019", 11, "till-1", "2027/000123", paidAt, 12350); /
 Submission submission = Submission.of(sale);
 Result result = eet.send(submission);
 
-switch (result) {
-    case Result.Accepted a -> store(a.pok(), a.exchange());          // registered
-    case Result.Uncertain u -> retryLater(submission.resend());      // nobody knows yet
-    case Result.Rejected r -> alert(r.code(), r.message());           // fix the message
-    case Result.Verified v -> {}                                      // a dry run passed
-}
+SaleState state = result.match(
+        a -> registered(a.pok(), a.exchange()),                       // registered
+        v -> SaleState.CHECKED,                                       // a dry run passed
+        r -> refused(r.code(), r.message()),                          // fix the message
+        u -> queued(submission.resend()));                            // nobody knows yet
 ```
 
-A `switch` over types needs Java 21; on 17 the same is a chain of `if (result instanceof Result.Accepted a)`.
+`match` takes one function per kind, so the compiler checks that all four are handled, on Java 8 as on 21 and in
+Kotlin, and a kind added later breaks the build instead of slipping past. Each function returns a value. Code that
+only acts, or throws a checked exception, can use an `instanceof` chain instead, which nothing checks; `Result` is
+not sealed, so a `switch` over it needs a `default`.
 
 ## What it does and what it leaves to you
 
@@ -36,7 +38,7 @@ A sale the certificate cannot sign, because it expired or is another taxpayer's,
 `Uncertain` with `Reason.CERTIFICATE`, to be held and sent once a valid certificate signs it, rather than refused for
 good by the tax office. `signer.eic()` and `signer.notAfter()` read the certificate for the checks and warnings of your
 own. A refund handed back in person is `sale.storno(sequenceNumber, time)`, a sale of its own with every amount
-negated. One `EetClient` per certificate; `close()` it when the certificate is replaced.
+negated. One `EetClient` per certificate.
 
 The certificate is the taxpayer's: they download it as a `.p12` with a password from MOJE daně, and it is valid
 for 366 days. `Signer.of(key, certificate)` takes a key held somewhere else.
@@ -44,3 +46,11 @@ for 366 days. `Signer.of(key, certificate)` takes a key held somewhere else.
 The answer is trusted only when it is signed over its Body by a certificate of the tax office
 (`organizationIdentifier=NTRCZ-72080043`) issued under I.CA's root, valid at the time of reading. Revocation is not
 checked, so reading an answer makes no network call.
+
+The connection is the JDK's `HttpURLConnection`, so the JVM's settings for it apply here too: the proxy properties,
+`http.keepAlive`, and `http.maxConnections`, which keeps at most 5 idle connections per host. When sending for many
+merchants at once, raise it, or every send past the fifth at a time opens a connection with a new TLS handshake.
+`HttpsURLConnection`'s JVM-wide trust settings do not apply: each connection checks the certificate and the host name
+as the JDK does by default. The timeout covers connecting and then each read, not the name lookup. An interrupt does
+not stop a send on a platform thread, which waits out its timeouts; on a virtual thread it closes the socket, and the
+send comes back `Uncertain` with `Reason.NETWORK`.

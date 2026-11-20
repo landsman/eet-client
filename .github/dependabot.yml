@@ -8,6 +8,10 @@ updates:
       default-days: 7
     commit-message:
       prefix: deps
+    # JUnit 6 needs Java 17, and the tests run on 8.
+    ignore:
+      - dependency-name: org.junit:junit-bom
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -8,15 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import javax.xml.XMLConstants;
@@ -32,7 +35,7 @@ import org.w3c.dom.Element;
 
 class SoapTest {
 
-    static final Path SPEC = Path.of(System.getProperty("eet.spec"));
+    static final Path SPEC = Paths.get(System.getProperty("eet.spec"));
     // Inside the playground response certificate's validity (2026-06-08 to 2027-06-08), so the recorded responses
     // keep verifying after it expires.
     private static final Instant RECORDED = Instant.parse("2026-11-10T16:11:45Z");
@@ -77,6 +80,16 @@ class SoapTest {
     }
 
     @Test
+    void aWeakerSignatureMethodIsRefusedOnEveryJdk() throws Exception {
+        String xml = new String(Soap.request(Submission.of(sale()), SENT, TestKeys.signer()), StandardCharsets.UTF_8);
+        Document sha1 =
+                parse(xml.replace("xmldsig-more#rsa-sha256", "xmldsig#rsa-sha1").getBytes(StandardCharsets.UTF_8));
+        String message = String.valueOf(assertThrows(Soap.InvalidResponseException.class, () -> Soap.signedBy(sha1))
+                .getMessage());
+        assertTrue(message.contains("rsa-sha1"), message);
+    }
+
+    @Test
     void aResendCarriesTheSameDataUnderANewHeader() throws Exception {
         Submission first = Submission.of(sale());
         Submission resend = first.resend();
@@ -99,26 +112,27 @@ class SoapTest {
     @Test
     void readsARecordedConfirmationAndTrustsItsSigner() throws Exception {
         Soap.Response response = Soap.parse(recorded("accepted-response.xml"));
-        assertEquals("62ebb536-7dec-47a9-8786-986a62bcf140-ff", response.pok());
-        assertEquals("90a4595c-288d-401d-bc20-08c8bcf1ed96", response.messageId());
-        assertTrue(response.test());
-        assertNull(verify(response.document(), "NTRCZ-72080043"));
+        assertEquals("62ebb536-7dec-47a9-8786-986a62bcf140-ff", response.pok);
+        assertEquals("90a4595c-288d-401d-bc20-08c8bcf1ed96", response.messageId);
+        assertTrue(response.test);
+        assertNull(verify(response.document, "NTRCZ-72080043"));
     }
 
     @Test
     void readsAWarning() throws Exception {
         Soap.Response response = Soap.parse(recorded("warning-response.xml"));
-        assertNotNull(response.pok());
+        assertNotNull(response.pok);
         assertEquals(
-                List.of(new Result.Warning(6, "id_jednotky neodpovida formatem pridelenemu c. evidencni jednotky")),
-                response.warnings());
+                Collections.singletonList(
+                        new Result.Warning(6, "id_jednotky neodpovida formatem pridelenemu c. evidencni jednotky")),
+                response.warnings);
     }
 
     @Test
     void readsAnError() throws Exception {
         Soap.Response response = Soap.parse(recorded("verified-response.xml"));
-        assertNull(response.pok());
-        assertEquals(0, response.errorCode());
+        assertNull(response.pok);
+        assertEquals(0, response.errorCode);
     }
 
     @Test
@@ -126,20 +140,20 @@ class SoapTest {
         String xml = new String(recorded("accepted-response.xml"), StandardCharsets.UTF_8);
         Document doc = Soap.parse(
                         xml.replace("-986a62bcf140-ff", "-986a62bcf141-ff").getBytes(StandardCharsets.UTF_8))
-                .document();
+                .document;
         assertEquals("the signature does not match the Body", verify(doc, "NTRCZ-72080043"));
     }
 
     @Test
     void refusesAConfirmationFromSomebodyElse() throws Exception {
-        Document doc = Soap.parse(recorded("accepted-response.xml")).document();
+        Document doc = Soap.parse(recorded("accepted-response.xml")).document;
         String problem = Objects.requireNonNull(verify(doc, "NTRCZ-00000000"));
         assertTrue(problem.startsWith("the signing certificate belongs to NTRCZ-72080043"), problem);
     }
 
     @Test
     void refusesAConfirmationOutsideItsCertificatesValidity() throws Exception {
-        Document doc = Soap.parse(recorded("accepted-response.xml")).document();
+        Document doc = Soap.parse(recorded("accepted-response.xml")).document;
         String problem = Soap.verify(
                 doc,
                 ica("ica-root-rsa-2022.pem"),
@@ -151,9 +165,12 @@ class SoapTest {
 
     @Test
     void refusesAFaultAndAnythingElse() {
-        assertThrows(Soap.InvalidResponseException.class, () -> Soap.parse("""
-                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body>
-                <soapenv:Fault><faultstring>nope</faultstring></soapenv:Fault></soapenv:Body></soapenv:Envelope>""".getBytes(StandardCharsets.UTF_8)));
+        assertThrows(
+                Soap.InvalidResponseException.class,
+                () -> Soap.parse(("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                                + "<soapenv:Body>\n<soapenv:Fault><faultstring>nope</faultstring></soapenv:Fault>"
+                                + "</soapenv:Body></soapenv:Envelope>")
+                        .getBytes(StandardCharsets.UTF_8)));
         assertThrows(Soap.InvalidResponseException.class, () -> Soap.parse("<html/>".getBytes(StandardCharsets.UTF_8)));
         assertThrows(
                 Soap.InvalidResponseException.class,
@@ -167,8 +184,16 @@ class SoapTest {
 
     static byte[] recorded(String name) throws IOException {
         try (InputStream in = SoapTest.class.getResourceAsStream("playground/" + name)) {
-            return Objects.requireNonNull(in, name).readAllBytes();
+            return bytes(Objects.requireNonNull(in, name));
         }
+    }
+
+    // InputStream.readAllBytes is Java 9.
+    static byte[] bytes(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        for (int n; (n = in.read(buffer)) != -1; ) out.write(buffer, 0, n);
+        return out.toByteArray();
     }
 
     private static @Nullable String verify(Document doc, String organizationIdentifier) throws Exception {
@@ -178,7 +203,7 @@ class SoapTest {
 
     private static List<X509Certificate> ica(String name) throws Exception {
         try (InputStream in = EetClient.class.getResourceAsStream(name)) {
-            return List.of(
+            return Collections.singletonList(
                     (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(in));
         }
     }

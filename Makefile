@@ -8,7 +8,7 @@ help: ## show this help
 
 ##@ Build
 .PHONY: build test lock publish publish-local
-build: ## check formatting, compile with error prone and nullaway, test, check declared dependencies and package the jar; TESTS_JDK=17 tests on that JDK
+build: ## check formatting, compile with error prone and nullaway, test, check declared dependencies and package the jar; TESTS_JDK=8 tests on that JDK
 	./gradlew build projectHealth $(if $(TESTS_JDK),-PtestsJdk=$(TESTS_JDK))
 
 test: ## run the tests

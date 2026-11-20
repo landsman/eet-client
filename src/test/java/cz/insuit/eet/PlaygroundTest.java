@@ -7,12 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.List;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -30,9 +32,11 @@ class PlaygroundTest {
 
     @BeforeAll
     static void client() throws IOException, GeneralSecurityException {
-        Path dir = Path.of(System.getProperty("eet.playground"));
-        char[] password = Files.readString(dir.resolve("password_pokladni_cert_playground.txt"))
-                .strip()
+        Path dir = Paths.get(System.getProperty("eet.playground"));
+        char[] password = new String(
+                        Files.readAllBytes(dir.resolve("password_pokladni_cert_playground.txt")),
+                        StandardCharsets.UTF_8)
+                .trim()
                 .toCharArray();
         try (InputStream p12 = Files.newInputStream(dir.resolve("CA_EET-Playground-" + EIC + ".p12"))) {
             eet = EetClient.builder(Environment.PLAYGROUND, Signer.fromPkcs12(p12, password))
@@ -46,7 +50,7 @@ class PlaygroundTest {
         Result.Accepted accepted = assertInstanceOf(Result.Accepted.class, eet.send(first), "first");
         assertTrue(accepted.test());
         assertTrue(accepted.pok().endsWith("-ff"), accepted.pok());
-        assertEquals(List.of(), accepted.warnings());
+        assertEquals(Collections.emptyList(), accepted.warnings());
         assertTrue(accepted.exchange().transactionId() != null);
         record("accepted", accepted);
 
@@ -73,9 +77,12 @@ class PlaygroundTest {
     }
 
     private static void record(String name, Result result) throws IOException {
-        Path dir = Files.createDirectories(Path.of("build/live"));
-        Files.writeString(dir.resolve(name + "-request.xml"), result.exchange().request());
+        Path dir = Files.createDirectories(Paths.get("build/live"));
+        Files.write(
+                dir.resolve(name + "-request.xml"), result.exchange().request().getBytes(StandardCharsets.UTF_8));
         String response = result.exchange().response();
-        if (response != null) Files.writeString(dir.resolve(name + "-response.xml"), response);
+        if (response != null) {
+            Files.write(dir.resolve(name + "-response.xml"), response.getBytes(StandardCharsets.UTF_8));
+        }
     }
 }

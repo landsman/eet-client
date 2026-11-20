@@ -3,8 +3,10 @@ package cz.insuit.eet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
+import java.security.Key;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Collections;
@@ -46,10 +48,11 @@ public final class Signer {
         KeyStore store = KeyStore.getInstance("PKCS12");
         store.load(pkcs12, password);
         for (String alias : Collections.list(store.aliases())) {
-            if (store.isKeyEntry(alias)
-                    && store.getKey(alias, password) instanceof PrivateKey key
-                    && store.getCertificate(alias) instanceof X509Certificate certificate) {
-                return new Signer(key, certificate);
+            if (!store.isKeyEntry(alias)) continue;
+            Key key = store.getKey(alias, password);
+            Certificate certificate = store.getCertificate(alias);
+            if (key instanceof PrivateKey && certificate instanceof X509Certificate) {
+                return new Signer((PrivateKey) key, (X509Certificate) certificate);
             }
         }
         throw new GeneralSecurityException("the PKCS#12 file holds no private key with a certificate");

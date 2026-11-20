@@ -3,7 +3,8 @@
 A Java client for [EET 2.0](https://eet.gov.cz/cs/pro-vyvojare), the Czech electronic sales registration that
 starts on 2027-01-01. It builds the message, signs it with the taxpayer's certificate, sends it, checks the tax
 office's signature on the answer and says what came of it, and renews the certificate through the CA's API. It needs
-Java 17; besides the JDK it uses only jackson-core, for the renewal API.
+Java 8, and renewing needs 8u141 or later: the CA's API is served under a Let's Encrypt chain (ISRG Root X1) that
+older updates do not trust. Besides the JDK it uses only jackson-core, for the renewal API.
 
 It is built for a platform that registers sales for many merchants at once, a payment gateway or a marketplace:
 each merchant is a taxpayer with a certificate of their own, and every sale is reported in that merchant's name.
