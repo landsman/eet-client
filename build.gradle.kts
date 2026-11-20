@@ -157,7 +157,9 @@ val verifyLocks =
 
 // The main code compiled once more with --release 8, which knows only the Java 8 API: a call 8 lacks fails here,
 // before a caller on 8 hits it as a NoSuchMethodError. No -Werror and no Error Prone, compileJava has both; this
-// one would fail on the MODULE warning above.
+// one would fail on the MODULE warning above. It checks the source, not the bytecode that ships: compileJava links
+// against the JDK it runs on, so ByteBuffer.flip() and the other Buffer methods Java 9 made covariant compile to
+// signatures 8 lacks. Only the tests on JDK 8 catch that.
 val checkJava8Api =
     tasks.register<JavaCompile>("checkJava8Api") {
         description = "Fails when the main code uses an API Java 8 does not have."
