@@ -80,6 +80,16 @@ class SoapTest {
     }
 
     @Test
+    void aWeakerSignatureMethodIsRefusedOnEveryJdk() throws Exception {
+        String xml = new String(Soap.request(Submission.of(sale()), SENT, TestKeys.signer()), StandardCharsets.UTF_8);
+        Document sha1 =
+                parse(xml.replace("xmldsig-more#rsa-sha256", "xmldsig#rsa-sha1").getBytes(StandardCharsets.UTF_8));
+        String message = String.valueOf(assertThrows(Soap.InvalidResponseException.class, () -> Soap.signedBy(sha1))
+                .getMessage());
+        assertTrue(message.contains("rsa-sha1"), message);
+    }
+
+    @Test
     void aResendCarriesTheSameDataUnderANewHeader() throws Exception {
         Submission first = Submission.of(sale());
         Submission resend = first.resend();

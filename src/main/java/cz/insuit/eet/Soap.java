@@ -318,7 +318,14 @@ final class Soap {
         body.setIdAttributeNS(WSU_NS, "Id", true);
         try {
             DOMValidateContext context = new DOMValidateContext(signer.getPublicKey(), signature);
+            // On by default only from Java 17; without it Java 8 and 11 would accept MD5 or an XSLT transform.
+            context.setProperty("org.jcp.xml.dsig.secureValidation", true);
             XMLSignature xmlSignature = XMLSignatureFactory.getInstance("DOM").unmarshalXMLSignature(context);
+            // What the service signs with, so a weaker method fails on every JDK, whatever its policy allows.
+            String method = xmlSignature.getSignedInfo().getSignatureMethod().getAlgorithm();
+            if (!RSA_SHA256.equals(method)) {
+                throw new InvalidResponseException("the signature method is " + method + ", not RSA-SHA256");
+            }
             // Exactly the Body, by its own id: a valid signature over some other element proves nothing about it.
             List<?> references = xmlSignature.getSignedInfo().getReferences();
             if (references.size() != 1 || !("#" + bodyId).equals(((Reference) references.get(0)).getURI())) {
