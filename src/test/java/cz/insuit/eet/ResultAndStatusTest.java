@@ -47,6 +47,18 @@ class ResultAndStatusTest {
     }
 
     @Test
+    void reflectionFromAnotherPackageReachesThemOnThePublicClass() throws Exception {
+        // Declared on package-private Value, Method.invoke from outside the package throws IllegalAccessException.
+        for (String name : new String[] {"equals", "hashCode", "toString"}) {
+            Class<?>[] parameters = name.equals("equals") ? new Class<?>[] {Object.class} : new Class<?>[0];
+            assertEquals(
+                    Result.Warning.class,
+                    Result.Warning.class.getMethod(name, parameters).getDeclaringClass(),
+                    name);
+        }
+    }
+
+    @Test
     void printsLikeARecord() {
         assertEquals("InProcess[pollAfter=PT2S]", new Status.InProcess(Duration.ofSeconds(2)).toString());
         assertEquals("Finished[]", new Status.Finished().toString());
