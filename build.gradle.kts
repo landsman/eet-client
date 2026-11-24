@@ -178,7 +178,7 @@ tasks.check {
 
 dependencies {
     "errorprone"("com.google.errorprone:error_prone_core:2.52.0")
-    "errorprone"("com.uber.nullaway:nullaway:0.14.3")
+    "errorprone"("com.uber.nullaway:nullaway:0.14.4")
 }
 
 // Published to this repository's GitHub Packages; a vX.Y.Z tag cuts a release (.github/workflows/release.yml).
