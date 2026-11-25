@@ -5,7 +5,7 @@ plugins {
     `java-library`
     `maven-publish`
     id("com.diffplug.spotless") version "8.11.0"
-    id("com.autonomousapps.dependency-analysis") version "3.20.2"
+    id("com.autonomousapps.dependency-analysis") version "3.20.4"
     id("net.ltgt.errorprone") version "5.2.0"
 }
 
